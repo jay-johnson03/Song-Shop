@@ -6,8 +6,8 @@
 }
 
 body {
-    background: #FFECC0;
-    color: #111827;
+    background: #FCF9EA;
+    color: #FFA4A4;
 }
 
 .nav {
@@ -15,8 +15,8 @@ body {
     justify-content: space-between;
     align-items: center;
     padding: 16px 24px;
-    background: #111827;
-    color: white;
+    background: #BADFDB;
+    color: #FFA4A4;
 }
 
 .nav .brand {
@@ -24,7 +24,7 @@ body {
 }
 
 .nav nav a {
-    color: white;
+    color: #FFA4A4;
     margin-left: 14px;
     text-decoration: none;
     font-weight: 600;
