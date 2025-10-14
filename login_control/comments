@@ -1,0 +1,54 @@
+
+- make different scenes for the different buttons
+- make a fxml for the different scenes (login and sign up)
+- make a controller for login and sign up
+
+        TO DO LIST:
+        - make it to where it will take the user to the signup page DONE
+        - take in the user's information that's inputted DONE
+        - encrypt the name and email DONE
+        - password should be hashed with salt DONE
+        - salt should be stored in the database DONE
+
+        Log In:
+
+        - fix the Ui
+        - take in the user's information that's been stored
+        - if email and password match, take them to the home page and show their name + "Welcome back!"
+        - if email and password don't match, show an error message "Email or password is incorrect" (maybe use an Alert)
+
+
+
+one way hashing
+    - once the hash is created, it can not be decrypted
+    - same message = the same hash
+    - a small change to a message should chang ethe hash value so extensively that the new hash appears uncorrelated with the old hash
+    - hash the password
+    - salting uses a randomly generated string used with the password to create a hash so that the same password will not have the same hash
+    - jbcrypt is a password hashing function designed to be slow and expensive to compute
+
+   salting the password
+
+    private static byte[] getSalt() throws NoSuchAlgorithmException {
+        SecureRandom random = new SecureRandom.getInstance("SHA1PRNG");
+        byte[] salt = new byte[16];
+        random.nextBytes(salt);
+        return salt;
+    }
+    private static String getSecurePassword(String passwordToHash, byte[] salt)
+    {
+        String generatedPassword = null;
+        MessageDigest md = MessageDigest.getInstance("SHA-512");
+        md.update(salt);
+        byte[] bytes = md.digest(passwordToHash.getBytes());
+        StringBuilder sb = new StringBuilder();
+        for(int i=0; i< bytes.length ;i++) {
+            sb.append(Integer.toString((bytes[i] & 0xff) + 0x100, 16).substring(1));
+        }
+        generatedPassword = sb.toString();
+        }
+        return generatedPassword;
+        }
+
+
+ */
