@@ -2,7 +2,7 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    font-family: Arial, sans-serif;
+    font-family: 'Times New Roman', Times, serif;
 }
 
 body {
@@ -21,6 +21,7 @@ body {
 
 .nav .brand {
     font-weight: 700;
+    font-size: larger;
 }
 
 .nav nav a {
@@ -35,11 +36,16 @@ body {
     opacity: 0.9;
 }
 
+.nav img {
+}
+
 .container {
     max-width: 1000px;
     margin: 32px auto;
     padding: 0 16px;
 }
+
+h2
 
 .songs-grid {
     display: grid;
@@ -75,7 +81,7 @@ body {
     text-decoration: none;
     padding: 8px 10px;
     border-radius: 6px;
-    background: #1db954;
+    background: #FFBDBD;
     color: white;
     font-weight: 700;
 }

@@ -1,8 +1,8 @@
 // Fake song data for demo. Each song has a Spotify URL so clicking opens the real Spotify track.
 const songsDB = {
   pop: [
-    { title: "Levitating", artist: "Dua Lipa", url: "https://open.spotify.com/track/463CkQjx2Zk1yXoBuierM9", img: "https://i.scdn.co/image/ab67616d0000b273e7e6d8f6a1f3d8f1f3a0b0b0" },
-    { title: "As It Was", artist: "Harry Styles", url: "https://open.spotify.com/track/4LRPiXqCikLlN15c3yImP7", img: "https://i.scdn.co/image/ab67616d0000b273example" }
+    { title: "Levitating", artist: "Dua Lipa", url: "https://open.spotify.com/track/463CkQjx2Zk1yXoBuierM9", img: "" },
+    { title: "As It Was", artist: "Harry Styles", url: "https://open.spotify.com/track/4LRPiXqCikLlN15c3yImP7", img: "" }
   ],
   rock: [
     { title: "Bohemian Rhapsody", artist: "Queen", url: "https://open.spotify.com/track/7tFiyTwD0nx5a1eklYtX2J", img: "" },
