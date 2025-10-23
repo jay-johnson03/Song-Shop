@@ -85,3 +85,21 @@ function loadFeatured() {
     featured.appendChild(div);
   });
 }
+
+const mysql = require('mysql2');
+
+const connection = mysql.createConnection({
+  host: 'localhost',
+  user: 'root',
+  password: '0203',
+  database: 'songshop',
+  port: 3306
+});
+
+connection.connect(err => {
+  if (err) {
+    console.error('Connection error:', err);
+    return;
+  }
+  console.log('Connected to MySQL!');
+});
