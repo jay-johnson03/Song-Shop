@@ -46,7 +46,7 @@ function loadSongs(genre) {
 
     // optional image - if provided
     if (s.img) {
-      const img = document.createElement('img');
+      const img=document.createElement('img');
       img.src = s.img;
       img.alt = `${s.title} cover`;
       card.appendChild(img);
@@ -86,20 +86,20 @@ function loadFeatured() {
   });
 }
 
-const mysql = require('mysql2');
+// const mysql = require('mysql2');
 
-const connection = mysql.createConnection({
-  host: 'localhost',
-  user: 'root',
-  password: '0203',
-  database: 'songshop',
-  port: 3306
-});
+// const connection = mysql.createConnection({
+//   host: 'localhost',
+//   user: 'root',
+//   password: '0203',
+//   database: 'songshop',
+//   port: 3306
+// });
 
-connection.connect(err => {
-  if (err) {
-    console.error('Connection error:', err);
-    return;
-  }
-  console.log('Connected to MySQL!');
-});
+// connection.connect(err => {
+//   if (err) {
+//     console.error('Connection error:', err);
+//     return;
+//   }
+//   console.log('Connected to MySQL!');
+// });
