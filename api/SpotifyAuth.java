@@ -14,14 +14,14 @@ import java.util.regex.Pattern;
 
 public class SpotifyAuth {
     private static final String TOKEN_URL = "https://accounts.spotify.com/api/token";
-    private static final String CLIENT_ID = "d520a62aaad34244aa6df66ca71294d3";
-    private static final String CLIENT_SECRET = "e50c4265cb464cfba3e58a3bbbf66231";
+    private static final String CLIENT_ID = "SPOTIFY_CLIENT_ID";
+    private static final String CLIENT_SECRET = "SPOTIFY_CLIENT_SECRET";
 
 
     // Resolve credentials from environment variables or fall back to constants.
     public static String getAccessToken() throws IOException {
-        String clientId = getEnvOrConstant("d520a62aaad34244aa6df66ca71294d3", CLIENT_ID);
-        String clientSecret = getEnvOrConstant("e50c4265cb464cfba3e58a3bbbf66231", CLIENT_SECRET);
+        String clientId = getEnvOrConstant("SPOTIFY_CLIENT_ID", SPOTIFY_CLIENT_ID);
+        String clientSecret = getEnvOrConstant("e50c4265cb464cfba3e58a3bbbf66231", SPOTIFY_CLIENT_SECRET);
         return getAccessToken(clientId, clientSecret);
     }
 
