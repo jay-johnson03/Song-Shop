@@ -1,5 +1,4 @@
-package api;
-
+package backend;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -14,8 +13,8 @@ import java.util.regex.Pattern;
 
 public class SpotifyAuth {
     private static final String TOKEN_URL = "https://accounts.spotify.com/api/token";
-    private static final String CLIENT_ID = "SPOTIFY_CLIENT_ID";
-    private static final String CLIENT_SECRET = "SPOTIFY_CLIENT_SECRET";
+    private static final String SPOTIFY_CLIENT_ID = "SPOTIFY_CLIENT_ID";
+    private static final String SPOTIFY_CLIENT_SECRET = "SPOTIFY_CLIENT_SECRET";
 
 
     // Resolve credentials from environment variables or fall back to constants.
