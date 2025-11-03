@@ -1,4 +1,5 @@
-package backend;
+package src.main.java.com.songshop.api;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -20,16 +21,16 @@ public class SpotifyAuth {
     // Resolve credentials from environment variables or fall back to constants.
     public static String getAccessToken() throws IOException {
         String clientId = getEnvOrConstant("SPOTIFY_CLIENT_ID", SPOTIFY_CLIENT_ID);
-        String clientSecret = getEnvOrConstant("e50c4265cb464cfba3e58a3bbbf66231", SPOTIFY_CLIENT_SECRET);
+        String clientSecret = getEnvOrConstant("SPOTIFY_CLIENT_SECRET", SPOTIFY_CLIENT_SECRET);
         return getAccessToken(clientId, clientSecret);
     }
 
     // Request an access token from Spotify using only JDK APIs (no external libs).
     public static String getAccessToken(String clientId, String clientSecret) throws IOException {
-        if (clientId == null || clientId.isEmpty() || clientId.equals("d520a62aaad34244aa6df66ca71294d3")) {
+        if (clientId == null || clientId.isEmpty()) {
             throw new IllegalStateException("Spotify client id is not set. Provide SPOTIFY_CLIENT_ID env var or set CLIENT_ID in the code.");
         }
-        if (clientSecret == null || clientSecret.isEmpty() || clientSecret.equals("e50c4265cb464cfba3e58a3bbbf66231")) {
+        if (clientSecret == null || clientSecret.isEmpty()) {
             throw new IllegalStateException("Spotify client secret is not set. Provide SPOTIFY_CLIENT_SECRET env var or set CLIENT_SECRET in the code.");
         }
 
@@ -54,7 +55,7 @@ public class SpotifyAuth {
             }
 
             // Very small and safe extractor for the access_token field in the JSON response.
-            Pattern p = Pattern.compile("\"access_token\"\s*:\s*\"([^\"]+)\"");
+            Pattern p = Pattern.compile("\"access_token\"\\s*:\\s*\"([^\"]+)\"");
             Matcher m = p.matcher(body);
             if (m.find()) {
                 return m.group(1);
