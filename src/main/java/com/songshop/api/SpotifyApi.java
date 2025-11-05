@@ -1,4 +1,4 @@
-package src.main.java.com.songshop.api;
+package com.songshop.api;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;

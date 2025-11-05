@@ -1,4 +1,4 @@
-package src.main.java.com.songshop.api;
+package com.songshop.api;
 
 import java.io.IOException;
 import java.net.URI;

@@ -1,5 +1,5 @@
-package src.main.java.com.songshop;
-import src.main.java.com.songshop.api.SpotifyApi;
+package com.songshop;
+import com.songshop.api.SpotifyApi;
 import java.sql.*;
 
 public class SongShopSaver {
