@@ -14,5 +14,6 @@
             "name": "Song Shop",
             "username": "root"
         }
-    ]
+    ],
+    "java.configuration.updateBuildConfiguration": "interactive"
 }
