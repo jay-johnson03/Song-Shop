@@ -6,8 +6,8 @@
 }
 
 body {
-    background: #FCF9EA;
-    color: #FFA4A4;
+    background: #1B3C53;
+    color: #D2C1B6;
 }
 
 .nav {
@@ -15,8 +15,8 @@ body {
     justify-content: space-between;
     align-items: center;
     padding: 16px 24px;
-    background: #BADFDB;
-    color: #FFA4A4;
+    background: #234C6A;
+    color: #D2C1B6;
 }
 
 .nav .brand {
@@ -25,7 +25,7 @@ body {
 }
 
 .nav nav a {
-    color: #FFA4A4;
+    color: #D2C1B6;
     margin-left: 14px;
     text-decoration: none;
     font-weight: 600;
@@ -55,7 +55,7 @@ h2
 }
 
 .card {
-    background: white;
+    background: #456882;
     border-radius: 8px;
     padding: 12px;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
@@ -81,8 +81,8 @@ h2
     text-decoration: none;
     padding: 8px 10px;
     border-radius: 6px;
-    background: #FFBDBD;
-    color: white;
+    background: #1B3C53;
+    color: #D2C1B6;
     font-weight: 700;
 }
 
