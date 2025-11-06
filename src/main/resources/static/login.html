@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Login - Song Shop</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="nav">
+    <img src="./media/logo.jpg" alt="Logo" width="50" height="70">
+    <div class="brand">🎵 Song Shop</div>
+    <nav>
+      <a href="./index.html">Home</a>
+      <a href="./pages/pop.html">Pop</a>
+      <a href="./pages/rock.html">Rock</a>
+      <a href="./pages/hip-hop.html">Hip-Hop</a>
+      <a href="./pages/indie.html">Indie</a>
+      <a href="./pages/rnb.html">R&B</a>
+      <a href="./pages/classical.html">Classical</a>
+      <a href="./login.html" class="active">Login</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <h1>Login with Spotify</h1>
+    <p>Click the button below to sign in with Spotify and allow Song Shop to access your profile.</p>
+
+    <div id="login-area">
+  <!-- This link initiates the Authorization Code flow on the server -->
+      <a id="spotify-login" class="btn" href="/api/login">Login with Spotify</a>
+      <div id="login-help" style="margin-top:.75rem;color:#a33"></div>
+    </div>
+
+    <div id="profile" style="margin-top:1.5rem;"></div>
+  </main>
+
+  <script src="script.js"></script>
+  <script src="spotify-auth.js"></script>
+  <script>
+    (async function showProfileAndStatus() {
+      try {
+        // First, check whether server-side Spotify config exists
+        const statusRes = await fetch('/api/login/status');
+        const loginHelp = document.getElementById('login-help');
+        const loginLink = document.getElementById('spotify-login');
+        if (statusRes.ok) {
+          const status = await statusRes.json();
+          if (!status.configured) {
+            // Disable the login button and show setup instructions
+            if (loginLink) {
+              loginLink.href = '#';
+              loginLink.classList.add('disabled');
+              loginLink.setAttribute('aria-disabled', 'true');
+            }
+            if (loginHelp) {
+              loginHelp.innerHTML = 'Spotify is not configured on the server. Set the environment variables <code>SPOTIFY_CLIENT_ID</code> and <code>SPOTIFY_CLIENT_SECRET</code> and restart the app. Redirect URI must be: <code>' + status.redirectUri + '</code>';
+            }
+            return;
+          }
+        }
+
+        // If configured, try to show profile if already logged in via session
+        const res = await fetch('/api/login/me');
+        const profileEl = document.getElementById('profile');
+        if (!res.ok) {
+          profileEl.innerHTML = '<p>You are not logged in. Click the button above to login with Spotify.</p>';
+          return;
+        }
+        const profile = await res.json();
+        const name = profile.display_name || (profile.email ? profile.email.split('@')[0] : 'User');
+        profileEl.innerHTML = `<p>Logged in as <strong>${name}</strong></p>`;
+      } catch (err) {
+        // network or other error
+        console.error(err);
+      }
+    })();
+  </script>
+</body>
+</html>
