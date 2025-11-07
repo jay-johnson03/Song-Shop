@@ -1,52 +1,79 @@
-// Lightweight frontend helper to request a Spotify client-credentials token
-// from the backend and expose it on window.spotifyAccessToken
-(function () {
-  async function fetchToken() {
-    try {
-      const res = await fetch('/api/spotify/token');
-      if (!res.ok) {
-        console.error('Failed to fetch Spotify token', res.status);
-        return null;
-      }
-      const token = await res.text();
-      // store on window for other scripts to use
-      window.spotifyAccessToken = token;
-      return token;
-    } catch (err) {
-      console.error('Error fetching Spotify token', err);
-      return null;
+// Spotify API configuration
+const config = {
+    clientId: '6a2285e744264aa5a4486a062f4b4fcc', // Your Spotify Client ID
+    redirectUri: 'https://song-shop-spotify.onrender.com/callback.html',
+    scope: 'user-read-private user-read-email',
+    authUrl: 'https://accounts.spotify.com/authorize'
+};
+
+// Function to generate a random state string
+function generateRandomState(length = 16) {
+    const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let text = '';
+    for (let i = 0; i < length; i++) {
+        text += possible.charAt(Math.floor(Math.random() * possible.length));
     }
-  }
+    return text;
+}
 
-  // Expose helper API
-  window.spotifyAuth = {
-    getToken: () => window.spotifyAccessToken,
-    fetchToken,
-  };
+// Function to initiate Spotify login
+function loginWithSpotify() {
+    const state = generateRandomState();
+    localStorage.setItem('spotify_auth_state', state);
 
-  // Fetch immediately on page load and refresh periodically (50 min)
-  fetchToken();
-  setInterval(fetchToken, 50 * 60 * 1000);
-})();
+    const args = new URLSearchParams({
+        response_type: 'token',
+        client_id: config.clientId,
+        scope: config.scope,
+        redirect_uri: config.redirectUri,
+        state: state
+    });
 
-// Attempt to detect if user is logged in via session (server-side) and update login link
-(async function updateLoginState() {
-  try {
-    const res = await fetch('/api/spotify/me');
+    window.location = `${config.authUrl}?${args}`;
+}
+
+// Function to handle the callback from Spotify
+function handleCallback() {
+    const hash = window.location.hash.substring(1);
+    const params = new URLSearchParams(hash);
+
+    const accessToken = params.get('access_token');
+    const state = params.get('state');
+    const storedState = localStorage.getItem('spotify_auth_state');
+
+    if (accessToken && state === storedState) {
+        localStorage.setItem('spotify_access_token', accessToken);
+        localStorage.removeItem('spotify_auth_state');
+        window.location.href = '/index.html'; // Redirect to home page
+    }
+}
+
+// Function to check if user is logged in
+function isLoggedIn() {
+    return !!localStorage.getItem('spotify_access_token');
+}
+
+// Function to log out
+function logout() {
+    localStorage.removeItem('spotify_access_token');
+    window.location.href = '/login.html';
+}
+
+// Update login button state
+function updateLoginState() {
     const loginLink = document.getElementById('spotify-login');
     if (!loginLink) return;
-    if (res.ok) {
-      const profile = await res.json();
-      const name = profile.display_name || (profile.email ? profile.email.split('@')[0] : 'User');
-      loginLink.textContent = 'Logged in: ' + name;
-      loginLink.href = '#';
-      loginLink.classList.add('logged-in');
+    
+    if (isLoggedIn()) {
+        loginLink.textContent = 'Logout';
+        loginLink.onclick = logout;
+        loginLink.classList.add('logged-in');
     } else {
-      loginLink.textContent = 'Login with Spotify';
-      loginLink.href = '/api/spotify/login';
-      loginLink.classList.remove('logged-in');
+        loginLink.textContent = 'Login with Spotify';
+        loginLink.onclick = loginWithSpotify;
+        loginLink.classList.remove('logged-in');
     }
-  } catch (err) {
-    // ignore
-  }
-})();
+}
+
+// Call updateLoginState when the page loads
+document.addEventListener('DOMContentLoaded', updateLoginState);
