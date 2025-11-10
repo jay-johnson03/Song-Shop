@@ -50,7 +50,7 @@ app.get("/callback", async (req, res) => {
   const tokenData = await tokenResponse.json();
   const access_token = tokenData.access_token;
 
-  res.redirect(`/welcome.html?access_token=${access_token}`);
+  res.redirect(`/index.html?access_token=${access_token}`);
 });
 
 // Start HTTPS server
