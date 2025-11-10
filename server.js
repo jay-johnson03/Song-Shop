@@ -15,7 +15,7 @@ app.get("/", (req, res) => {
 
 const client_id = process.env.SPOTIFY_CLIENT_ID;
 const client_secret = process.env.SPOTIFY_CLIENT_SECRET;
-const redirect_uri = "https://localhost:3000/callback";
+const redirect_uri = "https://localhost:3000";
 
 app.get("/login", (req, res) => {
   const scope = "user-read-private user-read-email";
