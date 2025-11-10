@@ -15,7 +15,7 @@ app.get("/", (req, res) => {
 
 const client_id = process.env.SPOTIFY_CLIENT_ID;
 const client_secret = process.env.SPOTIFY_CLIENT_SECRET;
-const redirect_uri = "http://localhost:3000/callback";
+const redirect_uri = "https://localhost:3000/callback";
 
 app.get("/login", (req, res) => {
   const scope = "user-read-private user-read-email";
@@ -56,6 +56,10 @@ app.get("/callback", async (req, res) => {
 // Start HTTPS server
 import https from "https";
 import fs from "fs";
+import path from "path";
+
+// Serve media (images) from the original static folder so we don't need to copy binaries
+app.use('/media', express.static(path.join(process.cwd(), 'src', 'main', 'resources', 'static', 'media')));
 
 const options = {
   key: fs.readFileSync("./localhost-key.pem"),

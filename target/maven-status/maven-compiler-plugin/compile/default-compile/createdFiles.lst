@@ -1,6 +1,0 @@
-com\songshop\SongShopApplication.class
-com\songshop\api\SpotifyAuth.class
-com\songshop\SongShopSaver.class
-com\songshop\api\SpotifyApi.class
-com\songshop\api\SpotifyController.class
-com\songshop\api\LoginController.class

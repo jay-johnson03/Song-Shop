@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Login - Song Shop</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header class="nav">
+    <img src="/media/logo.jpg" alt="Logo" width="50" height="70">
+    <div class="brand">🎵 Song Shop</div>
+    <nav>
+      <a href="/">Home</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <h1>Login with Spotify</h1>
+    <p>Click the button below to sign in with Spotify and access Song Shop.</p>
+
+    <div id="login-area">
+      <button id="spotify-login" class="btn" onclick="loginWithSpotify()">Login with Spotify</button>
+    </div>
+
+    <div id="profile" style="margin-top:1.5rem;"></div>
+  </main>
+
+  <script src="/spotify-auth.js"></script>
+  <script>
+    // Check if we're already logged in
+    if (isLoggedIn()) {
+      const accessToken = localStorage.getItem('spotify_access_token');
+      
+      // Fetch user profile
+      fetch('https://api.spotify.com/v1/me', {
+        headers: {
+          'Authorization': 'Bearer ' + accessToken
+        }
+      })
+      .then(response => response.json())
+      .then(profile => {
+        const name = profile.display_name || (profile.email ? profile.email.split('@')[0] : 'User');
+        document.getElementById('profile').innerHTML = `<p>Logged in as <strong>${name}</strong></p>
+          <button onclick="logout()">Logout</button>`;
+        document.getElementById('login-area').style.display = 'none';
+      })
+      .catch(() => {
+        // If there's an error, clear the token and show login button
+        logout();
+      });
+    }
+  </script>
+</body>
+</html>
