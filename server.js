@@ -53,4 +53,16 @@ app.get("/callback", async (req, res) => {
   res.redirect(`/welcome.html?access_token=${access_token}`);
 });
 
-app.listen(3000, () => console.log("Server running on http://localhost:3000"));
+// Start HTTPS server
+import https from "https";
+import fs from "fs";
+
+const options = {
+  key: fs.readFileSync("./localhost-key.pem"),
+  cert: fs.readFileSync("./localhost.pem"),
+};
+
+https.createServer(options, app).listen(3000, () => {
+  console.log("Secure server at https://localhost:3000");
+});
+
