@@ -1,30 +1,52 @@
-const express = require('express');
-const https = require('https');
-const fs = require('fs');
-const path = require('path');
+import express from "express";
+import fetch from "node-fetch";
+import dotenv from "dotenv";
+import cors from "cors";
 
+dotenv.config();
 const app = express();
-const PORT = process.env.PORT || 8080;
-const STATIC_DIR = path.join(__dirname, 'src', 'main', 'resources', 'static');
+app.use(cors());
+app.use(express.static("public"));
 
-const MIME_TYPES = {
-    '.html': 'text/html',
-    '.css': 'text/css',
-    '.js': 'text/javascript',
-    '.jpg': 'image/jpeg',
-    '.png': 'image/png',
-    '.ico': 'image/x-icon'
-};
+const client_id = process.env.SPOTIFY_CLIENT_ID;
+const client_secret = process.env.SPOTIFY_CLIENT_SECRET;
+const redirect_uri = "http://localhost:3000/callback";
 
-// Serve static files from the static directory
-app.use(express.static(STATIC_DIR));
-
-// For client-side routing, serve index.html for all routes
-app.get('*', (req, res) => {
-    res.sendFile(path.join(STATIC_DIR, 'index.html'));
+app.get("/login", (req, res) => {
+  const scope = "user-read-private user-read-email";
+  const auth_url = new URL("https://accounts.spotify.com/authorize");
+  auth_url.search = new URLSearchParams({
+    response_type: "code",
+    client_id,
+    scope,
+    redirect_uri,
+  });
+  res.redirect(auth_url.toString());
 });
 
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-    console.log(`Serving files from ${STATIC_DIR}`);
+app.get("/callback", async (req, res) => {
+  const code = req.query.code || null;
+
+  const tokenResponse = await fetch("https://accounts.spotify.com/api/token", {
+    method: "POST",
+    headers: {
+      Authorization:
+        "Basic " +
+        Buffer.from(client_id + ":" + client_secret).toString("base64"),
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({
+      grant_type: "authorization_code",
+      code,
+      redirect_uri,
+    }),
+  });
+
+  const tokenData = await tokenResponse.json();
+  const access_token = tokenData.access_token;
+
+  // Redirect to frontend with token in query
+  res.redirect(`/welcome.html?access_token=${access_token}`);
 });
+
+app.listen(3000, () => console.log("Server running on http://localhost:3000"));

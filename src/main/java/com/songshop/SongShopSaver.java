@@ -1,26 +1,11 @@
-package com.songshop;
-import com.songshop.api.SpotifyApi;
-import java.sql.*;
+// Spring Boot backend removed. This Java program previously handled
+// scheduled tasks and database persistence. The project has been moved
+// to a static frontend + Node.js static server. The original Java files
+// are intentionally left as placeholders to make it easy to restore
+// behavior from version history if needed.
 
+/*
 public class SongShopSaver {
-    public static void main(String[] args) {
-        System.out.println("🎵 Starting SongShop...");
-
-        // Step 1: Connect to the database
-        String url = "jdbc:mysql://localhost:3306/SongShop";
-        String user = "root";         // <-- change if needed
-        String password = "yourPassword"; // <-- change if needed
-
-        try (Connection conn = DriverManager.getConnection(url, user, password)) {
-            System.out.println("✅ Connected to MySQL database!");
-
-            // Step 2: Use Spotify API
-            SpotifyApi spotifyApi = new SpotifyApi();
-            spotifyApi.fetchAndSaveGenreSongs(conn, "pop");
-
-        } catch (SQLException e) {
-            System.out.println("❌ Database connection failed!");
-            e.printStackTrace();
-        }
-    }
+    // removed
 }
+*/

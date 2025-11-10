@@ -1,11 +1,5 @@
-package com.songshop;
+// Spring Boot backend removed. Original Java sources were intentionally deleted
+// when converting this project to a static frontend + Node.js server.
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-
-@SpringBootApplication
-public class SongShopApplication {
-    public static void main(String[] args) {
-        SpringApplication.run(SongShopApplication.class, args);
-    }
-}
+// If you need the Java backend again, restore from version control or re-create
+// the service separately. This file is intentionally left as a marker.
