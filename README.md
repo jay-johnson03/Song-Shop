@@ -1,33 +1,12 @@
 # Song-Shop (Static + Node)
 
-This repository has been converted from a Spring Boot backend to a static frontend served by a small Node.js server.
-
-What remains in this project:
-- `src/main/resources/static/` — all HTML/CSS/JS assets (frontend).
-- `server.js` — minimal Node/Express static server (project root).
-- `package.json` — Node dependencies and start script.
-
-Quick start (using WSL/Ubuntu recommended):
-
-1. Ensure WSL/Ubuntu is running and Node.js is installed inside WSL (Node >= 18).
-
-2. From WSL, change to the project directory (example):
-
-```bash
-cd /mnt/c/Users/jajoh/OneDrive/Documents/Database\ Design\ and\ Mngmt/Song-Shop
-```
-
-3. Install dependencies and start the server:
-
-```bash
-npm install
-npm start
+A shop where you can find different genres of songs for mood and vibes. Just log in and find what you want best! It's all free and when you click a song, it'll show a link to the song and you can go directly to it for listening.
 ```
 
 4. Open the site in your browser:
 
 ```
-http://localhost:8080/
+[http://localhost:8080/](https://localhost:3000/callback)
 ```
 
 Spotify setup notes:
