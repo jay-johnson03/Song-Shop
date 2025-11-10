@@ -115,6 +115,10 @@ async function loadFeatured() {
     }
 }
 
+document.getElementById("login-btn").addEventListener("click", () => {
+  window.location.href = "/login"; // triggers backend route
+});
+
 // const mysql = require('mysql2');
 
 // const connection = mysql.createConnection({

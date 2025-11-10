@@ -1,4 +1,0 @@
-<!-- pom.xml removed: this project has been migrated from Spring Boot to a
-     static frontend served by a small Node.js/Express server. If you need
-     to restore the original Java/Maven build, recover this file from git
-     history or the previous branch. -->

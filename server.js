@@ -6,7 +6,12 @@ import cors from "cors";
 dotenv.config();
 const app = express();
 app.use(cors());
-app.use(express.static("public"));
+app.use(express.static("public")); // serves everything in /public
+
+// 👇 ADD THIS ROUTE so "/" loads index.html
+app.get("/", (req, res) => {
+  res.sendFile("index.html", { root: "public" });
+});
 
 const client_id = process.env.SPOTIFY_CLIENT_ID;
 const client_secret = process.env.SPOTIFY_CLIENT_SECRET;
@@ -45,7 +50,6 @@ app.get("/callback", async (req, res) => {
   const tokenData = await tokenResponse.json();
   const access_token = tokenData.access_token;
 
-  // Redirect to frontend with token in query
   res.redirect(`/welcome.html?access_token=${access_token}`);
 });
 
