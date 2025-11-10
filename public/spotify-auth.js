@@ -1,65 +1,54 @@
-// Spotify API configuration
-const config = {
-    clientId: '6a2285e744264aa5a4486a062f4b4fcc', // Your Spotify Client ID
-    redirectUri: 'https://song-shop-spotify.onrender.com/callback.html',
-    scope: 'user-read-private user-read-email',
-    authUrl: 'https://accounts.spotify.com/authorize'
-};
+// Spotify OAuth configuration (server-side authorization code flow)
+// The server handles code exchange; client just stores the token
 
-// Function to generate a random state string
-function generateRandomState(length = 16) {
-    const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let text = '';
-    for (let i = 0; i < length; i++) {
-        text += possible.charAt(Math.floor(Math.random() * possible.length));
-    }
-    return text;
-}
-
-// Function to initiate Spotify login
+// Initiate Spotify login via server endpoint
 function loginWithSpotify() {
-    const state = generateRandomState();
-    localStorage.setItem('spotify_auth_state', state);
-
-    const args = new URLSearchParams({
-        response_type: 'token',
-        client_id: config.clientId,
-        scope: config.scope,
-        redirect_uri: config.redirectUri,
-        state: state
-    });
-
-    window.location = `${config.authUrl}?${args}`;
+    // Redirect to server's /login endpoint, which will redirect to Spotify auth
+    window.location.href = '/login';
 }
 
-// Function to handle the callback from Spotify
+// Handle callback from server after token exchange
+// The server will redirect here with ?access_token=...
 function handleCallback() {
-    const hash = window.location.hash.substring(1);
-    const params = new URLSearchParams(hash);
-
+    const params = new URLSearchParams(window.location.search);
     const accessToken = params.get('access_token');
-    const state = params.get('state');
-    const storedState = localStorage.getItem('spotify_auth_state');
 
-    if (accessToken && state === storedState) {
+    if (accessToken) {
         localStorage.setItem('spotify_access_token', accessToken);
-        localStorage.removeItem('spotify_auth_state');
-        window.location.href = '/index.html'; // Redirect to home page
+        // Clear the URL to remove the token from browser history
+        window.history.replaceState({}, document.title, '/');
+        // Redirect home
+        window.location.href = '/index.html';
+    } else {
+        console.error('No access token returned from server callback');
     }
 }
 
-// Function to check if user is logged in
+// Check for access token in URL (when server redirects with ?access_token=...)
+// This runs on every page load to handle the redirect after auth
+function checkAndStoreAccessToken() {
+    const params = new URLSearchParams(window.location.search);
+    const accessToken = params.get('access_token');
+    
+    if (accessToken) {
+        localStorage.setItem('spotify_access_token', accessToken);
+        // Remove the token from URL to keep it secure
+        window.history.replaceState({}, document.title, '/index.html');
+    }
+}
+
+// Check if user is logged in (token in localStorage)
 function isLoggedIn() {
     return !!localStorage.getItem('spotify_access_token');
 }
 
-// Function to log out
+// Log out: clear token and redirect to login
 function logout() {
     localStorage.removeItem('spotify_access_token');
     window.location.href = '/login.html';
 }
 
-// Update login button state
+// Update login button state on page load
 function updateLoginState() {
     const loginLink = document.getElementById('spotify-login');
     if (!loginLink) return;
@@ -75,5 +64,10 @@ function updateLoginState() {
     }
 }
 
-// Call updateLoginState when the page loads
-document.addEventListener('DOMContentLoaded', updateLoginState);
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', () => {
+    // First, check if we just received a token from server callback
+    checkAndStoreAccessToken();
+    // Then update the login button state
+    updateLoginState();
+});

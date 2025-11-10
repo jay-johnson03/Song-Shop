@@ -4,12 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Authenticating...</title>
-    <script src="/spotify-auth.js"></script>
+    <script src="./spotify-auth.js"></script>
 </head>
 <body>
     <h1>Authenticating...</h1>
+    <p>Please wait while we complete your authentication...</p>
     <script>
-        // Handle the callback as soon as the page loads
+        // Handle the callback from server (token will be in URL query param)
         document.addEventListener('DOMContentLoaded', handleCallback);
     </script>
 </body>

@@ -1,5 +1,32 @@
+# Dependencies
 node_modules/
+npm-debug.log
+package-lock.json
+yarn.lock
+
+# Environment variables (contains Client Secret!)
 .env
-.DS_Store
+.env.local
+.env.*.local
+
+# HTTPS Certificates (local development only)
 localhost-key.pem
 localhost.pem
+*.pem
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS
+Thumbs.db
+.DS_Store
