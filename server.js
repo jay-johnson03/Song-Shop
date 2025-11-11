@@ -15,7 +15,7 @@ const legacyMedia = path.join(process.cwd(), 'src', 'main', 'resources', 'static
 if (fs.existsSync(legacyMedia)) app.use('/media', express.static(legacyMedia));
 
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'public', 'index.ejs'));
 });
 
 const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || '';
@@ -83,3 +83,11 @@ if (useHttps) {
     console.log('To enable HTTPS for Spotify OAuth, add localhost.pem and localhost-key.pem to project root');
   });
 }
+
+// using the ejs templating engine
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'public'));
+
+app.get('/', (req, res) => {
+  res.render('index');
+});
