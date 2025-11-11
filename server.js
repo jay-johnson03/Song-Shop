@@ -1,106 +1,84 @@
-import express from "express";
-import fetch from "node-fetch";
-import dotenv from "dotenv";
-import cors from "cors";
-
-dotenv.config();
-const app = express();
-app.use(cors());
-app.use(express.static("public")); // serves everything in /public
-
-// 👇 ADD THIS ROUTE so "/" loads index.html
-app.get("/", (req, res) => {
-  res.sendFile("index.html", { root: "public" });
-});
-
-const client_id = process.env.SPOTIFY_CLIENT_ID;
-const client_secret = process.env.SPOTIFY_CLIENT_SECRET;
-const redirect_uri = "https://localhost:3000";
-
-app.get("/login", (req, res) => {
-  const scope = "user-read-private user-read-email";
-  const auth_url = new URL("https://accounts.spotify.com/authorize");
-  auth_url.search = new URLSearchParams({
-    response_type: "code",
-    client_id,
-    scope,
-    redirect_uri,
-  });
-  res.redirect(auth_url.toString());
-});
-
-app.get("/callback", async (req, res) => {
-  const code = req.query.code || null;
-
-  const tokenResponse = await fetch("https://accounts.spotify.com/api/token", {
-    method: "POST",
-    headers: {
-      Authorization:
-        "Basic " +
-        Buffer.from(client_id + ":" + client_secret).toString("base64"),
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: new URLSearchParams({
-      grant_type: "authorization_code",
-      code,
-      redirect_uri,
-    }),
-  });
-
-  const tokenData = await tokenResponse.json();
-  const access_token = tokenData.access_token;
-
-  res.redirect(`/index.html?access_token=${access_token}`);
-});
-
-// Start HTTPS server
-import https from "https";
-import fs from "fs";
-import path from "path";
-
-// Serve media (images) from the original static folder so we don't need to copy binaries
-app.use('/media', express.static(path.join(process.cwd(), 'src', 'main', 'resources', 'static', 'media')));
-
-const options = {
-  key: fs.readFileSync("./localhost-key.pem"),
-  cert: fs.readFileSync("./localhost.pem"),
-};
-
-https.createServer(options, app).listen(3000, () => {
-  console.log("Secure server at https://localhost:3000");
-});
-
 const express = require('express');
 const fs = require('fs');
 const https = require('https');
 const path = require('path');
+require('dotenv').config();
 
+const app = express();
 const PORT = process.env.PORT || 3000;
 
-// paths to certs generated above (place certs in project root)
-const CERT_FILE = path.join(__dirname, 'localhost.pem');
-const KEY_FILE  = path.join(__dirname, 'localhost-key.pem');
-
-// serve static site from public/
 app.use(express.static(path.join(__dirname, 'public')));
 
-// optional: ensure root serves index.html (use index.html or indexx.html)
+// Optional legacy media path
+const legacyMedia = path.join(process.cwd(), 'src', 'main', 'resources', 'static', 'media');
+if (fs.existsSync(legacyMedia)) app.use('/media', express.static(legacyMedia));
+
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// start HTTPS server (requires cert + key files present)
-if (fs.existsSync(CERT_FILE) && fs.existsSync(KEY_FILE)) {
-  const options = {
-    cert: fs.readFileSync(CERT_FILE),
-    key: fs.readFileSync(KEY_FILE),
-    };
+const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || '';
+const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET || '';
+
+const CERT_FILE = path.join(__dirname, 'localhost.pem');
+const KEY_FILE = path.join(__dirname, 'localhost-key.pem');
+const useHttps = fs.existsSync(CERT_FILE) && fs.existsSync(KEY_FILE);
+const redirectUri = `${useHttps ? 'https' : 'http'}://localhost:${PORT}/callback`;
+
+app.get('/login', (req, res) => {
+  if (!CLIENT_ID) return res.status(500).send('SPOTIFY_CLIENT_ID not set');
+  const scope = 'user-read-private user-read-email';
+  const params = new URLSearchParams({
+    response_type: 'code',
+    client_id: CLIENT_ID,
+    scope,
+    redirect_uri: redirectUri,
+  });
+  res.redirect('https://accounts.spotify.com/authorize?' + params.toString());
+});
+
+app.get('/callback', async (req, res) => {
+  try {
+    const code = req.query.code;
+    if (!code) return res.status(400).send('Missing code');
+    if (!CLIENT_ID || !CLIENT_SECRET) return res.status(500).send('Spotify credentials missing');
+
+    const tokenRes = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Basic ' + Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64'),
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({ grant_type: 'authorization_code', code, redirect_uri: redirectUri }),
+    });
+
+    if (!tokenRes.ok) {
+      const txt = await tokenRes.text();
+      console.error('Token exchange failed:', tokenRes.status, txt);
+      return res.status(502).send('Failed to exchange code for token');
+    }
+
+    const tokenData = await tokenRes.json();
+    const access_token = tokenData.access_token;
+    if (!access_token) return res.status(502).send('No access token returned');
+
+    res.redirect(`/index.html?access_token=${encodeURIComponent(access_token)}`);
+  } catch (err) {
+    console.error('Callback error', err);
+    res.status(500).send('Internal server error');
+  }
+});
+
+if (useHttps) {
+  const options = { key: fs.readFileSync(KEY_FILE), cert: fs.readFileSync(CERT_FILE) };
   https.createServer(options, app).listen(PORT, () => {
     console.log(`HTTPS server running at https://localhost:${PORT}`);
+    console.log(`Redirect URI set to: ${redirectUri}`);
   });
 } else {
-  // fallback to HTTP if certs missing (useful while generating)
   app.listen(PORT, () => {
     console.log(`HTTP server running at http://localhost:${PORT} (no certs found)`);
+    console.log(`Redirect URI set to: ${redirectUri}`);
+    console.log('To enable HTTPS for Spotify OAuth, add localhost.pem and localhost-key.pem to project root');
   });
 }
