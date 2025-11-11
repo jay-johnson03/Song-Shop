@@ -25,10 +25,16 @@ app.get('/', (req, res) => {
 
 // Genre page routes (renders EJS from public/pages/)
 const genres = ['pop', 'rock', 'hip-hop', 'indie', 'rnb', 'classical'];
+
 genres.forEach(genre => {
   app.get(`/pages/${genre}.html`, (req, res) => {
-    res.render(path.join('pages', genre));
+    res.render(`pages/${genre}`);
   });
+});
+
+// Login page route
+app.get('/login-page', (req, res) => {
+  res.render('login');
 });
 
 const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || '';
@@ -97,10 +103,7 @@ if (useHttps) {
   });
 }
 
-// using the ejs templating engine
-app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'public'));
-
-app.get('/', (req, res) => {
-  res.render('index');
-});
+  // Render login page (separate from /login which starts OAuth)
+  app.get('/login-page', (req, res) => {
+    res.render('login');
+  });
