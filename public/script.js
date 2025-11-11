@@ -2,7 +2,7 @@
 async function loadSongs(genre) {
     const accessToken = localStorage.getItem('spotify_access_token');
     if (!accessToken) {
-        window.location.href = '/login.html';
+        window.location.href = '/login.ejs';
         return;
     }
 
@@ -31,7 +31,7 @@ async function loadSongs(genre) {
             if (response.status === 401) {
                 // Token expired or invalid
                 localStorage.removeItem('spotify_access_token');
-                window.location.href = '/login.html';
+                window.location.href = '/login.ejs';
                 return;
             }
             throw new Error('Failed to fetch songs');
@@ -119,7 +119,7 @@ async function loadFeatured() {
 const loginBtn = document.getElementById("login-btn");
 if (loginBtn) {
   loginBtn.addEventListener("click", () => {
-    window.location.href = "/login.html";
+    window.location.href = "/login.ejs";
   });
 }
 

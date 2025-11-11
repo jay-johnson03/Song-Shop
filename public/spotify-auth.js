@@ -45,7 +45,7 @@ function isLoggedIn() {
 // Log out: clear token and redirect to login
 function logout() {
     localStorage.removeItem('spotify_access_token');
-    window.location.href = './login.html';
+    window.location.href = './login.ejs';
 }
 
 // Update login button state on page load
