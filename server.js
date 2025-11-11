@@ -1,8 +1,9 @@
+// imports
 const express = require('express');
 const fs = require('fs');
 const https = require('https');
 const path = require('path');
-require('dotenv').config();
+require('dotenv').config(); //reads from the .env file
 
 const app = express();
 const PORT = process.env.PORT || 3000;
