@@ -12,6 +12,9 @@ const PORT = process.env.PORT || 3000;
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'public'));
 
+// Block direct requests to .ejs files (prevents downloads if linked accidentally)
+app.get(/\.ejs$/, (req, res) => res.redirect('/'));
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Optional legacy media path
@@ -23,13 +26,14 @@ app.get('/', (req, res) => {
   res.render('index');
 });
 
-// Genre page routes (renders EJS from public/pages/)
+// Genre page routes (renders EJS from public/genre/)
 const genres = ['pop', 'rock', 'hip-hop', 'indie', 'rnb', 'classical'];
 
-genres.forEach(genre => {
-  app.get(`/pages/${genre}.html`, (req, res) => {
-    res.render(`pages/${genre}`);
-  });
+// Main genre routes: /genre/:name
+app.get('/genre/:name', (req, res) => {
+  const name = req.params.name;
+  if (!genres.includes(name)) return res.redirect('/');
+  res.render(`genre/${name}`);
 });
 
 // Login page route
@@ -102,8 +106,3 @@ if (useHttps) {
     console.log('To enable HTTPS for Spotify OAuth, add localhost.pem and localhost-key.pem to project root');
   });
 }
-
-  // Render login page (separate from /login which starts OAuth)
-  app.get('/login-page', (req, res) => {
-    res.render('login');
-  });
