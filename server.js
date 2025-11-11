@@ -8,14 +8,27 @@ require('dotenv').config(); //reads from the .env file
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Set EJS as the view engine and views directory
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'public'));
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Optional legacy media path
 const legacyMedia = path.join(process.cwd(), 'src', 'main', 'resources', 'static', 'media');
 if (fs.existsSync(legacyMedia)) app.use('/media', express.static(legacyMedia));
 
+// Render index.ejs for home page
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.ejs'));
+  res.render('index');
+});
+
+// Genre page routes (renders EJS from public/pages/)
+const genres = ['pop', 'rock', 'hip-hop', 'indie', 'rnb', 'classical'];
+genres.forEach(genre => {
+  app.get(`/pages/${genre}.html`, (req, res) => {
+    res.render(path.join('pages', genre));
+  });
 });
 
 const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || '';
