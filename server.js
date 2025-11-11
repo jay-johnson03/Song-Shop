@@ -70,3 +70,37 @@ https.createServer(options, app).listen(3000, () => {
   console.log("Secure server at https://localhost:3000");
 });
 
+const express = require('express');
+const fs = require('fs');
+const https = require('https');
+const path = require('path');
+
+const PORT = process.env.PORT || 3000;
+
+// paths to certs generated above (place certs in project root)
+const CERT_FILE = path.join(__dirname, 'localhost.pem');
+const KEY_FILE  = path.join(__dirname, 'localhost-key.pem');
+
+// serve static site from public/
+app.use(express.static(path.join(__dirname, 'public')));
+
+// optional: ensure root serves index.html (use index.html or indexx.html)
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// start HTTPS server (requires cert + key files present)
+if (fs.existsSync(CERT_FILE) && fs.existsSync(KEY_FILE)) {
+  const options = {
+    cert: fs.readFileSync(CERT_FILE),
+    key: fs.readFileSync(KEY_FILE),
+    };
+  https.createServer(options, app).listen(PORT, () => {
+    console.log(`HTTPS server running at https://localhost:${PORT}`);
+  });
+} else {
+  // fallback to HTTP if certs missing (useful while generating)
+  app.listen(PORT, () => {
+    console.log(`HTTP server running at http://localhost:${PORT} (no certs found)`);
+  });
+}

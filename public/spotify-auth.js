@@ -33,7 +33,7 @@ function checkAndStoreAccessToken() {
     if (accessToken) {
         localStorage.setItem('spotify_access_token', accessToken);
         // Remove the token from URL to keep it secure
-        window.history.replaceState({}, document.title, '/index.html');
+        window.history.replaceState({}, document.title, './index.html');
     }
 }
 
@@ -45,7 +45,7 @@ function isLoggedIn() {
 // Log out: clear token and redirect to login
 function logout() {
     localStorage.removeItem('spotify_access_token');
-    window.location.href = '/login.html';
+    window.location.href = './login.html';
 }
 
 // Update login button state on page load
