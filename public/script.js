@@ -49,7 +49,18 @@ async function loadSongs(genre) {
             return;
         }
 
-        data.tracks.items.forEach(track => {
+        // Filter tracks by release year (2020-2025)
+        const filteredTracks = data.tracks.items.filter(track => {
+            const releaseYear = parseInt(track.album.release_date.substring(0, 4));
+            return releaseYear >= 2020 && releaseYear <= 2025;
+        });
+
+        if (filteredTracks.length === 0) {
+            container.innerHTML = '<p>No songs found for this genre in the specified time range.</p>';
+            return;
+        }
+
+        filteredTracks.forEach(track => {
             const card = document.createElement('div');
             card.className = 'card';
             
