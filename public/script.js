@@ -1,13 +1,14 @@
 // Function to load songs from Spotify API based on genre
 async function loadSongs(genre) {
+    const container = document.getElementById('songs');
+    if (!container) return;
+    
     const accessToken = localStorage.getItem('spotify_access_token');
     if (!accessToken) {
-        window.location.href = '/login.ejs';
+        container.innerHTML = '<p>Please <a href="/login-page">login with Spotify</a> to view songs.</p>';
         return;
     }
 
-    const container = document.getElementById('songs');
-    if (!container) return;
     container.innerHTML = '<p>Loading songs...</p>';
 
     // Different search queries based on genre
@@ -31,7 +32,7 @@ async function loadSongs(genre) {
             if (response.status === 401) {
                 // Token expired or invalid
                 localStorage.removeItem('spotify_access_token');
-                window.location.href = '/login.ejs';
+                window.location.href = '/login-page';
                 return;
             }
             throw new Error('Failed to fetch songs');
@@ -119,7 +120,7 @@ async function loadFeatured() {
 const loginBtn = document.getElementById("login-btn");
 if (loginBtn) {
   loginBtn.addEventListener("click", () => {
-    window.location.href = "/login.ejs";
+    window.location.href = "/login-page";
   });
 }
 

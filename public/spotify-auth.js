@@ -18,7 +18,7 @@ function handleCallback() {
         // Clear the URL to remove the token from browser history
         window.history.replaceState({}, document.title, '/');
         // Redirect home
-        window.location.href = '/index.html';
+        window.location.href = '/';
     } else {
         console.error('No access token returned from server callback');
     }
@@ -33,7 +33,7 @@ function checkAndStoreAccessToken() {
     if (accessToken) {
         localStorage.setItem('spotify_access_token', accessToken);
         // Remove the token from URL to keep it secure
-        window.history.replaceState({}, document.title, './index.html');
+        window.history.replaceState({}, document.title, '/');
     }
 }
 
@@ -45,7 +45,7 @@ function isLoggedIn() {
 // Log out: clear token and redirect to login
 function logout() {
     localStorage.removeItem('spotify_access_token');
-    window.location.href = './login.ejs';
+    window.location.href = '/login-page';
 }
 
 // Update login button state on page load

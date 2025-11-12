@@ -42,6 +42,17 @@
       <li>- Rock</li>
     </ul>
   </infomation>
+  <script>
+    // Check if access token is in URL (from OAuth callback)
+    const urlParams = new URLSearchParams(window.location.search);
+    const accessToken = urlParams.get('access_token');
+    if (accessToken) {
+      // Store token in localStorage
+      localStorage.setItem('spotify_access_token', accessToken);
+      // Clean up URL (remove token from address bar)
+      window.history.replaceState({}, document.title, '/');
+    }
+  </script>
   <script src="/script.js"></script>
   <script src="/spotify-auth.js"></script>
 </body>
