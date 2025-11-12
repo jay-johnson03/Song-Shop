@@ -13,12 +13,12 @@ async function loadSongs(genre) {
 
     // Different search queries based on genre
     const queries = {
-        'pop': 'genre:pop OR genre:k-pop',
-        'rock': 'genre:rock year:2020-2024',
-        'hip-hop': 'genre:hip-hop year:2020-2024',
-        'indie': 'genre:indie year:2020-2024',
-        'rnb': 'genre:r-n-b year:2020-2024',
-        'classical': 'genre:classical'
+        'pop': 'genre:pop OR genre:k-pop year:2020-2025',
+        'rock': 'genre:rock year:2020-2025',
+        'hip-hop': 'genre:hip-hop year:2020-2025',
+        'indie': 'genre:indie year:2020-2025',
+        'rnb': 'genre:r-n-b year:2020-2025',
+        'classical': 'genre:classical year:2020-2025'
     };
 
     // Generate random offset for variety on each page load (0-950 to ensure we get 50 results)
