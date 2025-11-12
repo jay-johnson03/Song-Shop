@@ -13,16 +13,19 @@ async function loadSongs(genre) {
 
     // Different search queries based on genre
     const queries = {
-        'pop': 'genre:pop year:2023',
-        'rock': 'genre:rock year:2023',
-        'hip-hop': 'genre:hip-hop year:2023',
-        'indie': 'genre:indie year:2023',
-        'rnb': 'genre:r&b year:2023',
+        'pop': 'genre:"k-pop" OR genre:"pop"',
+        'rock': 'genre:"progressive rock" OR genre:"grunge"',
+        'hip-hop': 'genre:"hip hop" OR genre:"trap" OR genre:"melodic trap"',
+        'indie': 'genre:"indie pop" OR genre:"indie rock"',
+        'rnb': 'genre:"alternative r&b" OR genre:"contemporary r&b"',
         'classical': 'genre:classical'
     };
 
+    // Generate random offset for variety on each page load (0-950 to ensure we get 50 results)
+    const randomOffset = Math.floor(Math.random() * 950);
+
     try {
-        const response = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(queries[genre])}&type=track&limit=12`, {
+        const response = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(queries[genre])}&type=track&limit=50&offset=${randomOffset}`, {
             headers: {
                 'Authorization': `Bearer ${accessToken}`
             }
@@ -53,9 +56,11 @@ async function loadSongs(genre) {
             const image = track.album.images[0]?.url || '';
             card.innerHTML = `
                 ${image ? `<img src="${image}" alt="${track.name}">` : ''}
-                <p>${track.name}</p>
-                <p>${track.artists[0].name}</p>
-                <a href="${track.external_urls.spotify}" target="_blank" rel="noopener">Listen on Spotify</a>
+                <div class="card-content">
+                    <div class="track-name">${track.name}</div>
+                    <div class="artist-name">${track.artists[0].name}</div>
+                </div>
+                <a href="${track.external_urls.spotify}" target="_blank" rel="noopener" title="Listen on Spotify"></a>
             `;
             
             container.appendChild(card);
