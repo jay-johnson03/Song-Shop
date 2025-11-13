@@ -1,4 +1,4 @@
-// Spotify OAuth configuration (server-side authorization code flow)
+// Spotify OAuth configuration 
 // The server handles code exchange; client just stores the token
 
 // Initiate Spotify login via server endpoint
@@ -37,7 +37,7 @@ function checkAndStoreAccessToken() {
     }
 }
 
-// Check if user is logged in (token in localStorage)
+// Check if user is logged in
 function isLoggedIn() {
     return !!localStorage.getItem('spotify_access_token');
 }
