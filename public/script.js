@@ -21,8 +21,8 @@ async function loadSongs(genre) {
         'classical': '(genre:classical) year:2020-2025'
     };
 
-    // Generate random offset for variety on each page load (0-950 to ensure we get 50 results)
-    const randomOffset = Math.floor(Math.random() * 950);
+    // Generate random offset for variety on each page load (reduced range for better 2020-2025 coverage)
+    const randomOffset = Math.floor(Math.random() * 200);
 
     try {
         const response = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(queries[genre])}&type=track&limit=50&offset=${randomOffset}`, {
@@ -49,15 +49,22 @@ async function loadSongs(genre) {
             return;
         }
 
-        // Filter tracks by release year (2020-2025)
+        // STRICT filter: only tracks with release_date between 2020-2025 (inclusive)
         const filteredTracks = data.tracks.items.filter(track => {
+            if (!track.album || !track.album.release_date) return false;
             const releaseYear = parseInt(track.album.release_date.substring(0, 4));
             return releaseYear >= 2020 && releaseYear <= 2025;
         });
 
         if (filteredTracks.length === 0) {
-            container.innerHTML = '<p>No songs found for this genre in the specified time range.</p>';
+            container.innerHTML = '<p>No songs found for this genre from 2020-2025. Try refreshing.</p>';
             return;
+        }
+
+        // Shuffle for variety on each page load
+        for (let i = filteredTracks.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [filteredTracks[i], filteredTracks[j]] = [filteredTracks[j], filteredTracks[i]];
         }
 
         filteredTracks.forEach(track => {
