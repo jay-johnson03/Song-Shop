@@ -13,11 +13,11 @@ async function loadSongs(genre) {
 
     // Different search queries based on genre
     const queries = {
-        'pop': '(genre:pop || genre:k-pop) year:2020-2025',
+        'pop': '(genre:pop OR genre:k-pop) year:2020-2025',
         'rock': '(genre:rock) year:2020-2025',
         'hip-hop': '(genre:hip-hop) year:2020-2025',
         'indie': '(genre:indie) year:2020-2025',
-        'rnb': '(genre:r-n-b) year:2020-2025',
+        'rnb': '(genre:"alternative r&b" OR genre:"contemporary r&b") year:2020-2025',
         'classical': '(genre:classical) year:2020-2025'
     };
 
