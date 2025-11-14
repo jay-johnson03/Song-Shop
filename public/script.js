@@ -161,11 +161,13 @@ async function loadTopGlobal() {
     container.classList.add('centered');
     container.innerHTML = '<div class="status-message">Loading Top 10…</div>';
 
-    // Spotify editorial playlist id for Top 50 - USA
-    const playlistId = '37i9dQZEVXbLRQDuF5jeBp';
+    // Default Spotify editorial playlist id for Top 50 - USA
+    const usPlaylistIdDefault = '37i9dQZEVXbLRQDuF5jeBp';
+    const globalPlaylistId = '37i9dQZEVXbMDoHDwVN2tF';
 
     try {
-        const resp = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks?market=US&limit=10`, {
+        let playlistId = usPlaylistIdDefault;
+        let resp = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks?market=US&limit=10`, {
             headers: { 'Authorization': `Bearer ${accessToken}` }
         });
 
@@ -176,8 +178,39 @@ async function loadTopGlobal() {
                 container.innerHTML = '<div class="login-message">Session expired. Please <a href="/login-page">login</a> again.</div>';
                 return;
             }
-            container.innerHTML = '<div class="status-message">Unable to load US Top 10 tracks right now. Please refresh or try logging in again.</div>';
-            return;
+            if (resp.status === 404) {
+                // Try to discover the current US Top 50 playlist via search
+                const queries = ['Top 50 - USA', 'Top 50 USA', 'USA Top 50', 'Top 50 United States'];
+                let foundId = null;
+                for (const q of queries) {
+                    const s = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=playlist&market=US&limit=5`, {
+                        headers: { 'Authorization': `Bearer ${accessToken}` }
+                    });
+                    if (!s.ok) continue;
+                    const sj = await s.json();
+                    const playlists = sj.playlists?.items || [];
+                    const editorial = playlists.find(p => p.owner?.id === 'spotify') || playlists.find(p => p.owner?.display_name === 'Spotify');
+                    if (editorial) { foundId = editorial.id; break; }
+                }
+                if (foundId) {
+                    console.info('Discovered US Top 50 playlist id:', foundId);
+                    playlistId = foundId;
+                    resp = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks?market=US&limit=10`, {
+                        headers: { 'Authorization': `Bearer ${accessToken}` }
+                    });
+                } else {
+                    // Fallback to Global Top 50
+                    console.info('Falling back to Global Top 50');
+                    playlistId = globalPlaylistId;
+                    resp = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks?market=US&limit=10`, {
+                        headers: { 'Authorization': `Bearer ${accessToken}` }
+                    });
+                }
+            }
+            if (!resp.ok) {
+                container.innerHTML = '<div class="status-message">Unable to load US Top 10 tracks right now. Please refresh or try logging in again.</div>';
+                return;
+            }
         }
 
         const data = await resp.json();
