@@ -146,6 +146,73 @@ async function loadFeatured() {
     }
 }
 
+// Load Top 10 tracks from Spotify's official "Top 50 - Global" playlist
+async function loadTopGlobal() {
+    const container = document.getElementById('top10');
+    if (!container) return;
+
+    const accessToken = localStorage.getItem('spotify_access_token');
+    if (!accessToken) {
+        container.classList.add('centered');
+        container.innerHTML = '<div class="login-message">Please <a href="/login-page">login with Spotify</a> to view the Top 10 tracks.</div>';
+        return;
+    }
+
+    container.classList.add('centered');
+    container.innerHTML = '<div class="status-message">Loading Top 10…</div>';
+
+    // Spotify editorial playlist id for Top 50 - USA
+    const playlistId = '37i9dQZEVXbLRQDuF5jeBp';
+
+    try {
+        const resp = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks?market=US&limit=10`, {
+            headers: { 'Authorization': `Bearer ${accessToken}` }
+        });
+
+        if (!resp.ok) {
+            console.warn('Top 10 fetch failed:', resp.status, resp.statusText);
+            if (resp.status === 401) {
+                localStorage.removeItem('spotify_access_token');
+                container.innerHTML = '<div class="login-message">Session expired. Please <a href="/login-page">login</a> again.</div>';
+                return;
+            }
+            container.innerHTML = '<div class="status-message">Unable to load US Top 10 tracks right now. Please refresh or try logging in again.</div>';
+            return;
+        }
+
+        const data = await resp.json();
+        const items = (data.items || []).map(i => i.track).filter(Boolean);
+
+        if (items.length === 0) {
+            container.innerHTML = '<div class="status-message">No tracks available right now.</div>';
+            return;
+        }
+
+        // We have tracks; render as cards similar to genre pages
+        container.classList.remove('centered');
+        container.innerHTML = '';
+
+        items.forEach(track => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            const image = track.album?.images?.[0]?.url || '';
+            card.innerHTML = `
+                ${image ? `<img src="${image}" alt="${track.name}">` : ''}
+                <div class="card-content">
+                    <div class="track-name">${track.name}</div>
+                    <div class="artist-name">${track.artists?.[0]?.name || ''}</div>
+                </div>
+                <a href="${track.external_urls.spotify}" target="_blank" rel="noopener" title="Listen on Spotify"></a>
+            `;
+            container.appendChild(card);
+        });
+    } catch (e) {
+        console.error('Error loading Top 10:', e);
+        container.classList.add('centered');
+        container.innerHTML = '<div class="status-message">Error loading Top 10. Please try again.</div>';
+    }
+}
+
 // wire login button if present
 const loginBtn = document.getElementById("login-btn");
 if (loginBtn) {
@@ -153,21 +220,3 @@ if (loginBtn) {
     window.location.href = "/login-page";
   });
 }
-
-// const mysql = require('mysql2');
-
-// const connection = mysql.createConnection({
-//   host: 'localhost',
-//   user: 'root',
-//   password: '0203',
-//   database: 'songshop',
-//   port: 3306
-// });
-
-// connection.connect(err => {
-//   if (err) {
-//     console.error('Connection error:', err);
-//     return;
-//   }
-//   console.log('Connected to MySQL!');
-// });
