@@ -23,27 +23,28 @@
     </nav>
   </header>
 
-  <main class="container">
-    <h1>Welcome to the Song Shop</h1>
-    <p>Welcome to my website ! Just log into your 
-      Spotify account to explore recent songs by genre from the 
-      year 2020-2025! Click a genre in the navbar to get started. 
-      Once you find a song you like, click on it to open it directly in Spotify.
-      Each time you load a genre page, you'll see a fresh selection of recent songs! So
-      be sure to check back often for new tunes.
-    </p>
-  </main>
-  <information class="info_main">
-    <h2> Here are all the different categories you can view here :</h2>
-    <ul>
-      <li>- Pop</li>
-      <li>- R&B</li>
-      <li>- Hip Hop</li>
-      <li>- Classical</li>
-      <li>- Indie</li>
-      <li>- Rock</li>
-    </ul>
-  </infomation>
+  <section class="hero">
+    <div class="hero-content">
+      <h1>Discover Your Next Favorite Song</h1>
+      <p>Explore curated music from 2020-2025 across multiple genres.</p>
+      <a href="/login-page" class="cta-button">Get Started</a>
+    </div>
+  </section>
+
+  <section class="features">
+    <div class="feature-card">
+      <h3>Fresh Music Daily</h3>
+      <p>New songs from 2020-2025 every time you refresh. Stay current with the latest releases.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Multiple Genres</h3>
+      <p>Pop, Rock, Hip-Hop, Indie, R&B, and Classical—all organized and ready to explore.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Direct Spotify Access</h3>
+      <p>Click any song to open it instantly in Spotify. Seamless listening experience.</p>
+    </div>
+  </section>
   <script>
     // Check if access token is in URL (from OAuth callback)
     const urlParams = new URLSearchParams(window.location.search);
