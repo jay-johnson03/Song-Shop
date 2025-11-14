@@ -5,11 +5,13 @@ async function loadSongs(genre) {
     
     const accessToken = localStorage.getItem('spotify_access_token');
     if (!accessToken) {
-        container.innerHTML = '<p>Please <a href="/login-page">login with Spotify</a> to view songs.</p>';
+        container.classList.add('centered');
+        container.innerHTML = '<div class="login-message">Please <a href="/login-page">login with Spotify</a> to view songs.</div>';
         return;
     }
 
-    container.innerHTML = '<p>Loading songs...</p>';
+    container.classList.add('centered');
+    container.innerHTML = '<div class="status-message">Loading songs...</div>';
 
     // Different search queries based on genre
     const queries = {
@@ -45,7 +47,8 @@ async function loadSongs(genre) {
         container.innerHTML = ''; // Clear loading message
 
         if (!data.tracks || !data.tracks.items || data.tracks.items.length === 0) {
-            container.innerHTML = '<p>No songs found for this genre.</p>';
+            container.classList.add('centered');
+            container.innerHTML = '<div class="status-message">No songs found for this genre.</div>';
             return;
         }
 
@@ -57,7 +60,8 @@ async function loadSongs(genre) {
         });
 
         if (filteredTracks.length === 0) {
-            container.innerHTML = '<p>No songs found for this genre from 2020-2025. Try refreshing.</p>';
+            container.classList.add('centered');
+            container.innerHTML = '<div class="status-message">No songs found for this genre from 2020-2025. Try refreshing.</div>';
             return;
         }
 
@@ -67,6 +71,8 @@ async function loadSongs(genre) {
             [filteredTracks[i], filteredTracks[j]] = [filteredTracks[j], filteredTracks[i]];
         }
 
+        // We have tracks: remove centered state so grid lays out normally
+        container.classList.remove('centered');
         filteredTracks.forEach(track => {
             const card = document.createElement('div');
             card.className = 'card';
@@ -85,7 +91,8 @@ async function loadSongs(genre) {
         });
     } catch (error) {
         console.error('Error loading songs:', error);
-        container.innerHTML = '<p>Error loading songs. Please try again later.</p>';
+        container.classList.add('centered');
+        container.innerHTML = '<div class="status-message">Error loading songs. Please try again later.</div>';
     }
 }
 

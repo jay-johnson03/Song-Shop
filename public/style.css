@@ -145,12 +145,74 @@ body {
 
 h2
 
+/* Simple page hero for genre pages */
+.page-hero {
+    background: linear-gradient(135deg, #234C6A 0%, #1B3C53 100%);
+    padding: 48px 24px;
+    text-align: center;
+    border-bottom: 1px solid rgba(210, 193, 182, 0.2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.page-hero h2 {
+    color: #D2C1B6;
+    font-size: 2rem;
+    margin-bottom: 6px;
+    text-align: center;
+}
+
+.page-hero p {
+    color: #D2C1B6;
+    opacity: 0.85;
+    text-align: center;
+    max-width: 720px;
+}
+
+/* Messages inside songs grid */
+.status-message, .login-message {
+    grid-column: 1 / -1; /* span full grid width */
+    text-align: center;
+    background: rgba(35, 76, 106, 0.5);
+    color: #D2C1B6;
+    padding: 18px 22px;
+    border-radius: 10px;
+    font-size: 1.1rem;
+}
+
+.login-message a {
+    color: #D2C1B6;
+    font-weight: 700;
+    text-decoration: underline;
+    display: inline-block;
+    margin: 8px auto 0;
+}
+
+/* Ensure login message itself centers within the grid */
+.login-message {
+    justify-self: center;
+    align-self: center;
+    max-width: 640px;
+    margin: 0 auto;
+}
+
+/* Center the grid content vertically when showing only a message */
+.songs-grid.centered,
+#songs.centered {
+    min-height: 60vh;
+    display: flex !important;      /* override grid for centering state */
+    justify-content: center !important; /* horizontal center */
+    align-items: center !important;     /* vertical center */
+}
+
 .songs-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
+    grid-template-columns: repeat(3, minmax(260px, 1fr));
+    gap: 22px;
     margin-top: 18px;
-    width: 10%;
+    width: 100%;
 }
 
 .card {
@@ -160,7 +222,7 @@ h2
     aspect-ratio: 1 / 1;
     cursor: pointer;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
 }
 
 .card:hover {
@@ -176,7 +238,11 @@ h2
     top: 0;
     left: 0;
     z-index: 1;
+    border-radius: 0 !important; /* force squares */
 }
+
+/* ensure cards are square, not circles */
+.card, .card::after { border-radius: 0 !important; }
 
 .card::after {
     content: '';
