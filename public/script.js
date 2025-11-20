@@ -88,6 +88,9 @@ async function loadSongs(genre) {
             `;
             
             container.appendChild(card);
+            
+            // Save track to database in background
+            saveTrackToDatabase(track, genre).catch(err => console.error('Error saving track:', err));
         });
     } catch (error) {
         console.error('Error loading songs:', error);
@@ -238,11 +241,56 @@ async function loadTopGlobal() {
                 <a href="${track.external_urls.spotify}" target="_blank" rel="noopener" title="Listen on Spotify"></a>
             `;
             container.appendChild(card);
+            
+            // Save track to database in background (Top 10 is US Pop/various)
+            saveTrackToDatabase(track, 'Pop').catch(err => console.error('Error saving track:', err));
         });
     } catch (e) {
         console.error('Error loading Top 10:', e);
         container.classList.add('centered');
         container.innerHTML = '<div class="status-message">Error loading Top 10. Please try again.</div>';
+    }
+}
+
+// Function to save track data to MySQL database
+async function saveTrackToDatabase(track, genre) {
+    // Capitalize genre name to match database format
+    const genreMap = {
+        'pop': 'Pop',
+        'rock': 'Rock',
+        'hip-hop': 'HipHop',
+        'indie': 'Indie',
+        'rnb': 'RnB',
+        'classical': 'Classical'
+    };
+    
+    const genreName = genreMap[genre.toLowerCase()] || genre;
+    
+    try {
+        const response = await fetch('/api/save-track', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                spotifyId: track.id,
+                title: track.name,
+                artistName: track.artists[0]?.name || 'Unknown Artist',
+                artistSpotifyId: track.artists[0]?.id || null,
+                genre: genreName,
+                albumImage: track.album?.images?.[0]?.url || null,
+                spotifyUrl: track.external_urls?.spotify || null
+            })
+        });
+        
+        if (!response.ok) {
+            console.warn('Failed to save track to database:', track.name);
+        } else {
+            const result = await response.json();
+            console.log('✓ Saved to database:', track.name);
+        }
+    } catch (error) {
+        console.error('Database save error:', error);
     }
 }
 
