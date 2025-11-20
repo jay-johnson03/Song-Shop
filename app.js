@@ -1,4 +1,3 @@
-// app.js
 import axios from "axios";
 import { db } from "./db.js";
 import { getSpotifyToken } from "./spotify.js";
