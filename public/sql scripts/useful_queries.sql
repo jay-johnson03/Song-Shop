@@ -84,9 +84,8 @@ FROM Genre
 ORDER BY genreName;
 
 
--- ============================================
 -- PLAYLIST QUERIES
--- ============================================
+-- -----------------------------
 
 -- View all playlists
 SELECT * FROM Playlist;
@@ -112,10 +111,8 @@ LEFT JOIN PlaylistSongs ps ON p.playlistId = ps.playlistId
 GROUP BY p.playlistId, p.playlistName
 ORDER BY songCount DESC;
 
-
--- ============================================
 -- USER FAVORITES QUERIES
--- ============================================
+-- -----------------------------
 
 -- View all users
 SELECT * FROM UserTable;
@@ -155,10 +152,8 @@ HAVING favoriteCount > 0
 ORDER BY favoriteCount DESC
 LIMIT 10;
 
-
--- ============================================
 -- STATISTICS & ANALYTICS
--- ============================================
+-- -------------------------------------------
 
 -- Total counts of everything
 SELECT 
@@ -201,19 +196,8 @@ JOIN Genre g ON s.genreId = g.genreId
 ORDER BY s.songId DESC
 LIMIT 20;
 
-
--- ============================================
 -- DATA MANAGEMENT
--- ============================================
-
--- Find duplicate song titles
-SELECT 
-    songTitle,
-    COUNT(*) AS duplicateCount
-FROM Song
-GROUP BY songTitle
-HAVING duplicateCount > 1
-ORDER BY duplicateCount DESC;
+-- -------------------------------------------
 
 -- Find songs without a genre
 SELECT 
@@ -236,13 +220,9 @@ LEFT JOIN Song s ON a.artistId = s.artistId
 WHERE s.songId IS NULL;
 
 
--- ============================================
 -- VIEWS (Already created in create_views.sql)
--- ============================================
+-- --------------------------------------------
 
 -- Use existing views
 SELECT * FROM TotalArtists;
 SELECT * FROM TotalSpotifySongs;
-
-
--- Note: OUTFILE requires FILE privilege and specific path permissions
