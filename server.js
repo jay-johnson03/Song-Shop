@@ -2,13 +2,7 @@
 const express = require('express');
 const path = require('path');
 require('dotenv').config();
-
-let mysql = null;
-try {
-  mysql = require('mysql2');
-} catch(e) {
-  console.warn('mysql2 not installed - database features disabled');
-}
+const { addTrack } = require('./db/add-track');
 
 const app = express();
 app.use(express.json());
@@ -38,6 +32,11 @@ app.get('/login-page', (req, res) => {
   res.render('login');
 });
 
+// Admin page route
+app.get('/admin', (req, res) => {
+  res.render('admin');
+});
+
 
 
 // Block direct requests to .ejs files
@@ -50,35 +49,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || '';
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET || '';
-
-// MySQL connection (optional - simpler setup)
-let db = null;
-let dbEnabled = false;
-
-if (mysql && process.env.DB_HOST) {
-  db = mysql.createConnection({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'songshop',
-    port: process.env.DB_PORT || 3306,
-    charset: 'utf8mb4',
-    multipleStatements: true
-  });
-
-  db.connect((err) => {
-    if (err) {
-      console.warn('⚠ MySQL connection failed:', err.message);
-      console.log('  Server will run without database features');
-      dbEnabled = false;
-    } else {
-      console.log('✓ MySQL database connected successfully');
-      dbEnabled = true;
-    }
-  });
-} else {
-  console.log('⚠ Database not configured - server will run without database features');
-}
 
 // Redirect URI for Spotify OAuth
 const REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI || `http://127.0.0.1:${PORT}/callback`;
@@ -129,64 +99,26 @@ app.get('/callback', async (req, res) => {
 
 // API endpoint to save song, artist, and genre to database
 app.post('/api/save-track', async (req, res) => {
-  // Return early if database is not enabled
-  if (!dbEnabled || !db) {
-    return res.status(200).json({ success: false, message: 'Database not available' });
-  }
-
   try {
-    const { spotifyId, title, artistName, artistSpotifyId, genre, albumImage, spotifyUrl } = req.body;
+    const { spotifyId, title, artistName, genre, albumImage, spotifyUrl } = req.body;
     
     if (!spotifyId || !title || !artistName || !genre) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // Use callback-based queries with promises
-    const query = (sql, params) => {
-      return new Promise((resolve, reject) => {
-        db.query(sql, params, (err, results) => {
-          if (err) reject(err);
-          else resolve(results);
-        });
-      });
-    };
-
-    // 1. Insert or get genre
-    let genreRows = await query('SELECT genreId FROM Genre WHERE genreName = ?', [genre]);
-    
-    let genreId;
-    if (genreRows.length === 0) {
-      const genreResult = await query('INSERT INTO Genre (genreName) VALUES (?)', [genre]);
-      genreId = genreResult.insertId;
-    } else {
-      genreId = genreRows[0].genreId;
-    }
-
-    // 2. Insert or update artist
-    let artistId;
-    if (artistSpotifyId) {
-      artistId = parseInt(artistSpotifyId.replace(/\D/g, '').slice(0, 9)) || Math.floor(Math.random() * 1000000);
-    } else {
-      artistId = Math.floor(Math.random() * 1000000);
-    }
-
-    await query(
-      'INSERT INTO Artist (artistId, artistName, genreId) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE artistName = VALUES(artistName), genreId = VALUES(genreId)',
-      [artistId, artistName, genreId]
-    );
-
-    // 3. Insert or update song
-    const songId = parseInt(spotifyId.replace(/\D/g, '').slice(0, 9)) || Math.floor(Math.random() * 1000000);
-    
-    await query(
-      'INSERT INTO Song (songId, songTitle, artistId, genreId) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE songTitle = VALUES(songTitle), artistId = VALUES(artistId), genreId = VALUES(genreId)',
-      [songId, title, artistId, genreId]
-    );
+    // Call the addTrack function from db/add-track.js
+    await addTrack({
+      songTitle: title,
+      artistName: artistName,
+      genreName: genre,
+      spotifyId: spotifyId,
+      imageUrl: albumImage || null,
+      previewUrl: spotifyUrl || null
+    });
 
     res.json({ 
       success: true, 
-      message: 'Track saved to database',
-      data: { songId, artistId, genreId }
+      message: 'Track saved to database'
     });
   } catch (error) {
     console.error('Error saving track:', error);
@@ -196,53 +128,66 @@ app.post('/api/save-track', async (req, res) => {
 
 // API endpoint to get all saved tracks
 app.get('/api/tracks', (req, res) => {
-  if (!dbEnabled || !db) {
-    return res.status(503).json({ error: 'Database not available' });
-  }
-
-  db.query(`
-    SELECT s.songId, s.songTitle, a.artistName, g.genreName
-    FROM Song s
-    JOIN Artist a ON s.artistId = a.artistId
-    JOIN Genre g ON s.genreId = g.genreId
-    ORDER BY s.songId DESC
-    LIMIT 100
-  `, (err, rows) => {
+  const newConnection = require('./db/connection');
+  const con = newConnection();
+  
+  con.connect(err => {
     if (err) {
-      console.error('Error fetching tracks:', err);
-      return res.status(500).json({ error: 'Failed to fetch tracks' });
+      console.error('Database connection failed:', err);
+      return res.status(503).json({ error: 'Database not available' });
     }
-    res.json({ tracks: rows });
+
+    con.query(`
+      SELECT s.songId, s.songTitle, a.artistName, g.genreName, 
+             s.spotifyId, s.imageUrl, s.previewUrl, s.createdAt
+      FROM Song s
+      JOIN Artist a ON s.artistId = a.artistId
+      JOIN Genre g ON s.genreId = g.genreId
+      ORDER BY s.createdAt DESC
+      LIMIT 100
+    `, (err, rows) => {
+      con.end();
+      if (err) {
+        console.error('Error fetching tracks:', err);
+        return res.status(500).json({ error: 'Failed to fetch tracks' });
+      }
+      res.json({ tracks: rows });
+    });
   });
 });
 
 // API endpoint to get tracks by genre
 app.get('/api/tracks/genre/:genre', (req, res) => {
-  if (!dbEnabled || !db) {
-    return res.status(503).json({ error: 'Database not available' });
-  }
-
+  const newConnection = require('./db/connection');
+  const con = newConnection();
   const genre = req.params.genre;
-  db.query(`
-    SELECT s.songId, s.songTitle, a.artistName, g.genreName
-    FROM Song s
-    JOIN Artist a ON s.artistId = a.artistId
-    JOIN Genre g ON s.genreId = g.genreId
-    WHERE g.genreName = ?
-    ORDER BY s.songId DESC
-  `, [genre], (err, rows) => {
+  
+  con.connect(err => {
     if (err) {
-      console.error('Error fetching tracks by genre:', err);
-      return res.status(500).json({ error: 'Failed to fetch tracks' });
+      console.error('Database connection failed:', err);
+      return res.status(503).json({ error: 'Database not available' });
     }
-    res.json({ tracks: rows });
+
+    con.query(`
+      SELECT s.songId, s.songTitle, a.artistName, g.genreName
+      FROM Song s
+      JOIN Artist a ON s.artistId = a.artistId
+      JOIN Genre g ON s.genreId = g.genreId
+      WHERE g.genreName = ?
+      ORDER BY s.songId DESC
+    `, [genre], (err, rows) => {
+      con.end();
+      if (err) {
+        console.error('Error fetching tracks by genre:', err);
+        return res.status(500).json({ error: 'Failed to fetch tracks' });
+      }
+      res.json({ tracks: rows });
+    });
   });
 });
 
 // Start HTTP server
 app.listen(PORT, 'localhost', () => {
   console.log(`\n✓ Server running at http://localhost:${PORT}`);
-  console.log(`✓ Redirect URI: ${REDIRECT_URI}`);
-  if (dbEnabled) console.log('✓ Database connected\n');
-  else console.log('⚠ Database not connected\n');
+  console.log(`✓ Redirect URI: ${REDIRECT_URI}\n`);
 });
