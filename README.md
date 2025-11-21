@@ -1,6 +1,6 @@
 # Song-Shop
 
-A music app powered by Spotify that lets you explore different genres and saves your discoveries to a MySQL database. Just log in with Spotify and find songs that match your mood and vibes!
+A music app powered by Spotify and Node that lets you explore different genres and saves your discoveries to a MySQL database. Just log in with Spotify and find songs that match your mood and vibes!
 
 ## Features
 
