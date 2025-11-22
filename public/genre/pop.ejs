@@ -19,6 +19,7 @@
       <a href="/genre/classical">Classical</a>
       <!-- Link to dedicated login page -->
       <a href="/login-page">Login</a>
+      <a id="admin-link" href="/admin" style="display:none;">Admin</a>
     </nav>
   </header>
 
@@ -32,6 +33,7 @@
   </main>
 
   <script src="/script.js"></script>
+  <script>window.ADMIN_SPOTIFY_ID = "<%= process.env.ADMIN_SPOTIFY_ID || '' %>";</script>
   <script>loadSongs('pop');</script>
 </body>
 </html>

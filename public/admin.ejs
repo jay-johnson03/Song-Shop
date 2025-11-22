@@ -209,53 +209,70 @@
     </div>
 
     <script>
-        async function loadData() {
+        let currentOffset = 0;
+        const pageSize = 100; // Show 100 per page
+
+        async function loadStats() {
             try {
-                const response = await fetch('/api/tracks');
+                const resp = await fetch('/api/stats');
+                if (!resp.ok) return;
+                const stats = await resp.json();
+                document.getElementById('songCount').textContent = stats.songs;
+                document.getElementById('artistCount').textContent = stats.artists;
+                document.getElementById('genreCount').textContent = stats.genres;
+            } catch (e) {
+                console.warn('Stats load failed:', e);
+            }
+        }
+
+        async function loadData(reset=false) {
+            if (reset) currentOffset = 0;
+            try {
+                const response = await fetch(`/api/tracks?limit=${pageSize}&offset=${currentOffset}`);
                 const data = await response.json();
-                
+
+                loadStats(); // refresh totals separately
+
+                const tbody = document.getElementById('songsTable');
+                if (reset) tbody.innerHTML = '';
+
                 if (data.tracks && data.tracks.length > 0) {
-                    // Update stats
-                    document.getElementById('songCount').textContent = data.tracks.length;
-                    
-                    const uniqueArtists = new Set(data.tracks.map(t => t.artistName)).size;
-                    document.getElementById('artistCount').textContent = uniqueArtists;
-                    
-                    const uniqueGenres = new Set(data.tracks.map(t => t.genreName)).size;
-                    document.getElementById('genreCount').textContent = uniqueGenres;
-                    
-                    // Populate table
-                    const tbody = document.getElementById('songsTable');
-                    tbody.innerHTML = data.tracks.map(track => `
+                    const rowsHtml = data.tracks.map(track => `
                         <tr>
-                            <td>
-                                ${track.imageUrl ? `<img src="${track.imageUrl}" alt="Album" class="album-img">` : '🎵'}
-                            </td>
+                            <td>${track.imageUrl ? `<img src="${track.imageUrl}" alt="Album" class="album-img">` : '🎵'}</td>
                             <td><strong>${track.songTitle}</strong></td>
                             <td>${track.artistName}</td>
                             <td><span class="genre-badge">${track.genreName}</span></td>
                             <td class="timestamp">${new Date(track.createdAt).toLocaleString()}</td>
-                            <td>
-                                ${track.previewUrl ? `<a href="${track.previewUrl}" target="_blank" class="spotify-link">🎧 Listen</a>` : '-'}
-                            </td>
+                            <td>${track.previewUrl ? `<a href="${track.previewUrl}" target="_blank" class="spotify-link">🎧 Listen</a>` : '-'}</td>
                         </tr>
                     `).join('');
-                } else {
-                    document.getElementById('songsTable').innerHTML = 
-                        '<tr><td colspan="6" class="no-data">No songs saved yet. Go to a genre page and start saving!</td></tr>';
-                    document.getElementById('songCount').textContent = '0';
-                    document.getElementById('artistCount').textContent = '0';
-                    document.getElementById('genreCount').textContent = '0';
+                    tbody.insertAdjacentHTML('beforeend', rowsHtml);
+
+                    // Add/load more button if more remain
+                    const existingLoadMore = document.getElementById('loadMoreRow');
+                    if (existingLoadMore) existingLoadMore.remove();
+                    const total = data.totalSongs;
+                    currentOffset += data.limit;
+                    if (currentOffset < total) {
+                        tbody.insertAdjacentHTML('beforeend', `
+                          <tr id="loadMoreRow">
+                            <td colspan="6" style="text-align:center; padding:25px;">
+                              <button class="refresh-btn" onclick="loadData(false)">Load More (${currentOffset}/${total})</button>
+                            </td>
+                          </tr>`);
+                    }
+                } else if (reset) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="no-data">No songs saved yet.</td></tr>';
                 }
             } catch (error) {
                 console.error('Error loading data:', error);
-                document.getElementById('songsTable').innerHTML = 
-                    '<tr><td colspan="6" class="no-data" style="color: red;">Error loading data. Make sure the database is connected.</td></tr>';
+                document.getElementById('songsTable').innerHTML = '<tr><td colspan="6" class="no-data" style="color:red;">Error loading data.</td></tr>';
             }
         }
 
-        // Load data on page load
-        loadData();
+        // Initial load
+        loadData(true);
     </script>
 </body>
 </html>

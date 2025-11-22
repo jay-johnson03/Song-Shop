@@ -130,28 +130,66 @@ app.post('/api/save-track', async (req, res) => {
 app.get('/api/tracks', (req, res) => {
   const newConnection = require('./db/connection');
   const con = newConnection();
-  
+  const limit = Math.min(parseInt(req.query.limit) || 100, 1000); // cap limit to 1000
+  const offset = Math.max(parseInt(req.query.offset) || 0, 0);
+
   con.connect(err => {
     if (err) {
       console.error('Database connection failed:', err);
       return res.status(503).json({ error: 'Database not available' });
     }
 
-    con.query(`
-      SELECT s.songId, s.songTitle, a.artistName, g.genreName, 
-             s.spotifyId, s.imageUrl, s.previewUrl, s.createdAt
-      FROM Song s
-      JOIN Artist a ON s.artistId = a.artistId
-      JOIN Genre g ON s.genreId = g.genreId
-      ORDER BY s.createdAt DESC
-      LIMIT 100
-    `, (err, rows) => {
-      con.end();
-      if (err) {
-        console.error('Error fetching tracks:', err);
-        return res.status(500).json({ error: 'Failed to fetch tracks' });
+    // First get total count
+    con.query('SELECT COUNT(*) AS totalSongs FROM Song', (countErr, countRows) => {
+      if (countErr) {
+        con.end();
+        console.error('Count query failed:', countErr);
+        return res.status(500).json({ error: 'Failed to fetch count' });
       }
-      res.json({ tracks: rows });
+      const totalSongs = countRows[0].totalSongs;
+
+      // Then fetch page of tracks
+      con.query(`
+        SELECT s.songId, s.songTitle, a.artistName, g.genreName,
+               s.spotifyId, s.imageUrl, s.previewUrl, s.createdAt
+        FROM Song s
+        JOIN Artist a ON s.artistId = a.artistId
+        JOIN Genre g ON s.genreId = g.genreId
+        ORDER BY s.createdAt DESC
+        LIMIT ? OFFSET ?
+      `, [limit, offset], (err2, rows) => {
+        con.end();
+        if (err2) {
+          console.error('Error fetching tracks:', err2);
+          return res.status(500).json({ error: 'Failed to fetch tracks' });
+        }
+        res.json({ totalSongs, limit, offset, tracks: rows });
+      });
+    });
+  });
+});
+
+// Stats endpoint for totals without paging
+app.get('/api/stats', (req, res) => {
+  const newConnection = require('./db/connection');
+  const con = newConnection();
+  con.connect(err => {
+    if (err) {
+      console.error('Database connection failed:', err);
+      return res.status(503).json({ error: 'Database not available' });
+    }
+    con.query(`
+      SELECT 
+        (SELECT COUNT(*) FROM Song)   AS songs,
+        (SELECT COUNT(*) FROM Artist) AS artists,
+        (SELECT COUNT(*) FROM Genre)  AS genres
+    `, (qErr, rows) => {
+      con.end();
+      if (qErr) {
+        console.error('Stats query failed:', qErr);
+        return res.status(500).json({ error: 'Failed to fetch stats' });
+      }
+      res.json(rows[0]);
     });
   });
 });

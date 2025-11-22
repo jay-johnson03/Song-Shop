@@ -20,6 +20,7 @@
       <a href="/genre/classical">Classical</a>
       <!-- Link to dedicated login page -->
       <a href="/login-page">Login</a>
+      <a id="admin-link" href="/admin" style="display:none;">Admin</a>
     </nav>
   </header>
 
@@ -63,6 +64,7 @@
   </script>
   <script src="/script.js"></script>
   <script src="/spotify-auth.js"></script>
+  <script>window.ADMIN_SPOTIFY_ID = "<%= process.env.ADMIN_SPOTIFY_ID || '' %>";</script>
   <script>
     // Load Top 10 on home page
     if (document.getElementById('top10')) {

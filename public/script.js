@@ -301,3 +301,28 @@ if (loginBtn) {
     window.location.href = "/login-page";
   });
 }
+
+// ADMIN LINK HANDLING
+async function revealAdminLinkIfAuthorized() {
+    const adminId = window.ADMIN_SPOTIFY_ID || '';
+    if (!adminId) return; // Not configured
+    const link = document.getElementById('admin-link');
+    if (!link) return;
+    const token = localStorage.getItem('spotify_access_token');
+    if (!token) return; // Need login
+    try {
+        const resp = await fetch('https://api.spotify.com/v1/me', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!resp.ok) return;
+        const profile = await resp.json();
+        if (profile.id && profile.id === adminId) {
+            link.style.display = 'inline-block';
+        }
+    } catch (e) {
+        console.warn('Admin check failed:', e);
+    }
+}
+
+// Run after DOM load
+document.addEventListener('DOMContentLoaded', revealAdminLinkIfAuthorized);
