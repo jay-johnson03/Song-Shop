@@ -13,49 +13,115 @@ async function addTrack(trackData) {
       console.log('Connected to the database!');
 
       // 1. Insert or get Genre
-      const genreQuery = `INSERT INTO Genre (genreName) VALUES (?) 
-                          ON DUPLICATE KEY UPDATE genreId=LAST_INSERT_ID(genreId)`;
+      const genreQuery = `INSERT INTO genre (genreName) VALUES (?) 
+                          ON DUPLICATE KEY UPDATE genreId=genreId`;
       
       con.query(genreQuery, [genreName], (err, result) => {
         if (err) {
           con.end();
           return reject(err);
         }
-        const genreId = result.insertId;
-
-        // 2. Insert or get Artist
-        const artistQuery = `INSERT INTO Artist (artistName, genreId) VALUES (?, ?) 
-                             ON DUPLICATE KEY UPDATE artistId=LAST_INSERT_ID(artistId)`;
         
-        con.query(artistQuery, [artistName, genreId], (err, result) => {
+        // Get the genreId (either newly inserted or existing)
+        let genreId = result.insertId;
+        if (genreId === 0) {
+          // Duplicate key, need to fetch existing ID
+          con.query('SELECT genreId FROM genre WHERE genreName = ?', [genreName], (err, rows) => {
+            if (err) {
+              con.end();
+              return reject(err);
+            }
+            genreId = rows[0].genreId;
+            insertArtist(genreId);
+          });
+        } else {
+          insertArtist(genreId);
+        }
+      });
+
+      function insertArtist(genreId) {
+        // 2. Check if artist exists first
+        con.query('SELECT artistId FROM artist WHERE artistName = ? AND genreId = ?', [artistName, genreId], (err, rows) => {
           if (err) {
             con.end();
             return reject(err);
           }
-          const artistId = result.insertId;
 
-          // 3. Insert Song
-          const songQuery = `INSERT INTO Song (songTitle, artistId, genreId, spotifyId, imageUrl, previewUrl) 
-                             VALUES (?, ?, ?, ?, ?, ?) 
-                             ON DUPLICATE KEY UPDATE 
-                             songTitle = VALUES(songTitle),
-                             imageUrl = VALUES(imageUrl),
-                             previewUrl = VALUES(previewUrl)`;
-          
-          con.query(songQuery, [songTitle, artistId, genreId, spotifyId, imageUrl, previewUrl], (err, result) => {
-            con.end((endErr) => {
-              if (endErr) console.error('Error closing connection:', endErr);
-              else console.log('Connection closed gracefully.');
+          if (rows.length > 0) {
+            // Artist already exists, use existing ID
+            const artistId = rows[0].artistId;
+            insertSong(artistId, genreId);
+          } else {
+            // Get next available artistId
+            con.query('SELECT IFNULL(MAX(artistId), 0) + 1 AS nextId FROM artist', (err, result) => {
+              if (err) {
+                con.end();
+                return reject(err);
+              }
+              const nextArtistId = result[0].nextId;
+              // Insert new artist with explicit ID
+              con.query('INSERT INTO artist (artistId, artistName, genreId) VALUES (?, ?, ?)', [nextArtistId, artistName, genreId], (err, result) => {
+                if (err) {
+                  con.end();
+                  return reject(err);
+                }
+                insertSong(nextArtistId, genreId);
+              });
             });
-
-            if (err) {
-              return reject(err);
-            }
-            console.log("Track added successfully:", songTitle);
-            resolve(result);
-          });
+          }
         });
-      });
+      }
+
+      function insertSong(artistId, genreId) {
+        // 3. Check if song exists by spotifyId
+        con.query('SELECT songId FROM song WHERE spotifySongId = ?', [spotifyId], (err, rows) => {
+          if (err) {
+            con.end();
+            return reject(err);
+          }
+
+          if (rows.length > 0) {
+            // Song already exists, update it
+            const songId = rows[0].songId;
+            con.query('UPDATE song SET songTitle = ?, artistId = ?, genreId = ? WHERE songId = ?', 
+              [songTitle, artistId, genreId, songId], (err, result) => {
+                con.end((endErr) => {
+                  if (endErr) console.error('Error closing connection:', endErr);
+                  else console.log('Connection closed gracefully.');
+                });
+
+                if (err) {
+                  return reject(err);
+                }
+                console.log("Track updated successfully:", songTitle);
+                resolve(result);
+              });
+          } else {
+            // Get next available songId
+            con.query('SELECT IFNULL(MAX(songId), 0) + 1 AS nextId FROM song', (err, result) => {
+              if (err) {
+                con.end();
+                return reject(err);
+              }
+              const nextSongId = result[0].nextId;
+              // Insert new song with explicit ID
+              con.query('INSERT INTO song (songId, songTitle, artistId, genreId, spotifySongId) VALUES (?, ?, ?, ?, ?)', 
+                [nextSongId, songTitle, artistId, genreId, spotifyId], (err, result) => {
+                  con.end((endErr) => {
+                    if (endErr) console.error('Error closing connection:', endErr);
+                    else console.log('Connection closed gracefully.');
+                  });
+
+                  if (err) {
+                    return reject(err);
+                  }
+                  console.log("Track added successfully:", songTitle);
+                  resolve(result);
+                });
+            });
+          }
+        });
+      }
     });
   });
 }
