@@ -34,7 +34,7 @@ When you browse songs on any genre page or view the Top 10:
 
 - **Backend**: Node.js, Express
 - **Database**: MySQL
-- **Frontend**: EJS templates, Vanilla JavaScript
+- **Frontend**: EJS templates(using HTML and CSS), Vanilla JavaScript
 - **API**: Spotify Web API
 - **Authentication**: OAuth 2.0
 - **Security**: HTTPS with self-signed certificates
