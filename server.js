@@ -8,6 +8,21 @@ const app = express();
 app.use(express.json());
 const PORT = Number(process.env.PORT || 3000);
 
+// Helper function to execute database queries
+function query(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    const con = require('./db/connection')();
+    con.connect(err => {
+      if (err) return reject(err);
+      con.query(sql, params, (err, rows) => {
+        con.end();
+        if (err) return reject(err);
+        resolve(rows);
+      });
+    });
+  });
+}
+
 // Set EJS as the view engine and views directory
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'public'));
@@ -90,6 +105,70 @@ app.get('/callback', async (req, res) => {
     const { access_token } = await tokenRes.json();
     if (!access_token) return res.status(502).send('No access token returned');
 
+    // Fetch user profile from Spotify
+    const userRes = await fetch('https://api.spotify.com/v1/me', {
+      headers: { 'Authorization': `Bearer ${access_token}` }
+    });
+
+    if (userRes.ok) {
+      const userProfile = await userRes.json();
+      
+      // Save or update user in database
+      const con = require('./db/connection')();
+      con.connect((err) => {
+        if (!err && userProfile.id) {
+          const spotifyId = userProfile.id;
+          const userName = userProfile.display_name || 'Spotify User';
+          const userEmail = userProfile.email || '';
+          const profilePicUrl = userProfile.images?.[0]?.url || '';
+
+          // Check if user exists, otherwise create
+          con.query(
+            'SELECT userId FROM usertable WHERE spotifyId = ?',
+            [spotifyId],
+            (err, rows) => {
+              if (err) {
+                con.end();
+                return;
+              }
+              
+              if (rows.length > 0) {
+                // Update existing user
+                con.query(
+                  'UPDATE usertable SET userName = ?, userEmail = ?, profilePicUrl = ? WHERE spotifyId = ?',
+                  [userName, userEmail, profilePicUrl, spotifyId],
+                  (err) => {
+                    con.end();
+                    console.log('User updated:', userName);
+                  }
+                );
+              } else {
+                // Create new user
+                con.query(
+                  'SELECT IFNULL(MAX(userId), 0) + 1 AS nextId FROM usertable',
+                  (err, result) => {
+                    if (err) {
+                      con.end();
+                      return;
+                    }
+                    const nextUserId = result[0].nextId;
+                    con.query(
+                      'INSERT INTO usertable (userId, userName, userEmail, spotifyId, profilePicUrl) VALUES (?, ?, ?, ?, ?)',
+                      [nextUserId, userName, userEmail, spotifyId, profilePicUrl],
+                      (err) => {
+                        con.end();
+                        console.log('User saved:', userName);
+                      }
+                    );
+                  }
+                );
+              }
+            }
+          );
+        }
+      });
+    }
+
     res.redirect(`/?access_token=${encodeURIComponent(access_token)}`);
   } catch (err) {
     console.error('Callback error', err);
@@ -127,101 +206,183 @@ app.post('/api/save-track', async (req, res) => {
 });
 
 // API endpoint to get all saved tracks
-app.get('/api/tracks', (req, res) => {
-  const newConnection = require('./db/connection');
-  const con = newConnection();
-  const limit = Math.min(parseInt(req.query.limit) || 100, 1000); // cap limit to 1000
-  const offset = Math.max(parseInt(req.query.offset) || 0, 0);
+app.get('/api/tracks', async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 100, 1000);
+    const offset = Math.max(parseInt(req.query.offset) || 0, 0);
 
-  con.connect(err => {
-    if (err) {
-      console.error('Database connection failed:', err);
-      return res.status(503).json({ error: 'Database not available' });
-    }
+    const countRows = await query('SELECT COUNT(*) AS totalSongs FROM song');
+    const totalSongs = countRows[0].totalSongs;
 
-    // First get total count
-    con.query('SELECT COUNT(*) AS totalSongs FROM Song', (countErr, countRows) => {
-      if (countErr) {
-        con.end();
-        console.error('Count query failed:', countErr);
-        return res.status(500).json({ error: 'Failed to fetch count' });
-      }
-      const totalSongs = countRows[0].totalSongs;
+    const tracks = await query(`
+      SELECT s.songId, s.songTitle, a.artistName, g.genreName,
+             s.spotifySongId, s.imageUrl
+      FROM song s
+      JOIN artist a ON s.artistId = a.artistId
+      JOIN genre g ON s.genreId = g.genreId
+      ORDER BY s.songId DESC
+      LIMIT ? OFFSET ?
+    `, [limit, offset]);
 
-      // Then fetch page of tracks
-      con.query(`
-        SELECT s.songId, s.songTitle, a.artistName, g.genreName,
-               s.spotifyId, s.imageUrl, s.previewUrl, s.createdAt
-        FROM Song s
-        JOIN Artist a ON s.artistId = a.artistId
-        JOIN Genre g ON s.genreId = g.genreId
-        ORDER BY s.createdAt DESC
-        LIMIT ? OFFSET ?
-      `, [limit, offset], (err2, rows) => {
-        con.end();
-        if (err2) {
-          console.error('Error fetching tracks:', err2);
-          return res.status(500).json({ error: 'Failed to fetch tracks' });
-        }
-        res.json({ totalSongs, limit, offset, tracks: rows });
-      });
-    });
-  });
+    res.json({ totalSongs, limit, offset, tracks });
+  } catch (err) {
+    console.error('Error fetching tracks:', err);
+    res.status(500).json({ error: 'Failed to fetch tracks' });
+  }
 });
 
 // Stats endpoint for totals without paging
-app.get('/api/stats', (req, res) => {
-  const newConnection = require('./db/connection');
-  const con = newConnection();
-  con.connect(err => {
-    if (err) {
-      console.error('Database connection failed:', err);
-      return res.status(503).json({ error: 'Database not available' });
-    }
-    con.query(`
+app.get('/api/stats', async (req, res) => {
+  try {
+    const rows = await query(`
       SELECT 
-        (SELECT COUNT(*) FROM Song)   AS songs,
-        (SELECT COUNT(*) FROM Artist) AS artists,
-        (SELECT COUNT(*) FROM Genre)  AS genres
-    `, (qErr, rows) => {
-      con.end();
-      if (qErr) {
-        console.error('Stats query failed:', qErr);
-        return res.status(500).json({ error: 'Failed to fetch stats' });
-      }
-      res.json(rows[0]);
-    });
-  });
+        (SELECT COUNT(*) FROM song)   AS songs,
+        (SELECT COUNT(*) FROM artist) AS artists,
+        (SELECT COUNT(*) FROM genre)  AS genres
+    `);
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('Stats query failed:', err);
+    res.status(500).json({ error: 'Failed to fetch stats' });
+  }
 });
 
 // API endpoint to get tracks by genre
-app.get('/api/tracks/genre/:genre', (req, res) => {
-  const newConnection = require('./db/connection');
-  const con = newConnection();
-  const genre = req.params.genre;
-  
-  con.connect(err => {
-    if (err) {
-      console.error('Database connection failed:', err);
-      return res.status(503).json({ error: 'Database not available' });
-    }
-
-    con.query(`
+app.get('/api/tracks/genre/:genre', async (req, res) => {
+  try {
+    const tracks = await query(`
       SELECT s.songId, s.songTitle, a.artistName, g.genreName
-      FROM Song s
-      JOIN Artist a ON s.artistId = a.artistId
-      JOIN Genre g ON s.genreId = g.genreId
+      FROM song s
+      JOIN artist a ON s.artistId = a.artistId
+      JOIN genre g ON s.genreId = g.genreId
       WHERE g.genreName = ?
       ORDER BY s.songId DESC
-    `, [genre], (err, rows) => {
-      con.end();
-      if (err) {
-        console.error('Error fetching tracks by genre:', err);
-        return res.status(500).json({ error: 'Failed to fetch tracks' });
-      }
-      res.json({ tracks: rows });
+    `, [req.params.genre]);
+    res.json({ tracks });
+  } catch (err) {
+    console.error('Error fetching tracks by genre:', err);
+    res.status(500).json({ error: 'Failed to fetch tracks' });
+  }
+});
+
+// API endpoint to get user profile by Spotify ID
+app.get('/api/user/:spotifyId', async (req, res) => {
+  try {
+    const rows = await query(
+      'SELECT userId, userName, userEmail, profilePicUrl FROM usertable WHERE spotifyId = ?',
+      [req.params.spotifyId]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('Error fetching user:', err);
+    res.status(500).json({ error: 'Failed to fetch user' });
+  }
+});
+
+// API endpoint to save user favorite
+app.post('/api/favorites', async (req, res) => {
+  try {
+    const { spotifyId, songId } = req.body;
+    if (!spotifyId || !songId) return res.status(400).json({ error: 'Missing spotifyId or songId' });
+
+    const rows = await query('SELECT userId FROM usertable WHERE spotifyId = ?', [spotifyId]);
+    if (rows.length === 0) return res.status(404).json({ error: 'User not found' });
+
+    await query('INSERT IGNORE INTO userfavorites (userId, songId) VALUES (?, ?)', [rows[0].userId, songId]);
+    res.json({ success: true, message: 'Favorite saved' });
+  } catch (err) {
+    console.error('Error saving favorite:', err);
+    res.status(500).json({ error: 'Failed to save favorite' });
+  }
+});
+
+// API endpoint to get user favorites
+app.get('/api/favorites/:spotifyId', async (req, res) => {
+  try {
+    const favorites = await query(`
+      SELECT s.songId, s.songTitle, a.artistName, g.genreName, s.imageUrl
+      FROM userfavorites uf
+      JOIN usertable u ON uf.userId = u.userId
+      JOIN song s ON uf.songId = s.songId
+      JOIN artist a ON s.artistId = a.artistId
+      JOIN genre g ON s.genreId = g.genreId
+      WHERE u.spotifyId = ?
+      ORDER BY uf.favoritedAt DESC
+    `, [req.params.spotifyId]);
+    res.json({ favorites });
+  } catch (err) {
+    console.error('Error fetching favorites:', err);
+    res.status(500).json({ error: 'Failed to fetch favorites' });
+  }
+});
+
+// API endpoint to delete user favorite
+app.delete('/api/favorites/:spotifyId/:songId', async (req, res) => {
+  try {
+    const rows = await query('SELECT userId FROM usertable WHERE spotifyId = ?', [req.params.spotifyId]);
+    if (rows.length === 0) return res.status(404).json({ error: 'User not found' });
+
+    await query('DELETE FROM userfavorites WHERE userId = ? AND songId = ?', [rows[0].userId, req.params.songId]);
+    res.json({ success: true, message: 'Favorite removed' });
+  } catch (err) {
+    console.error('Error deleting favorite:', err);
+    res.status(500).json({ error: 'Failed to delete favorite' });
+  }
+});
+
+// API endpoint to delete a single song by songId
+app.delete('/api/songs/:songId', async (req, res) => {
+  try {
+    const songId = req.params.songId;
+    
+    // First, remove any favorites for this song
+    await query('DELETE FROM userfavorites WHERE songId = ?', [songId]);
+    
+    // Then delete the song
+    const result = await query('DELETE FROM song WHERE songId = ?', [songId]);
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Song not found' });
+    }
+    
+    res.json({ success: true, message: 'Song deleted successfully', affectedRows: result.affectedRows });
+  } catch (err) {
+    console.error('Error deleting song:', err);
+    res.status(500).json({ error: 'Failed to delete song' });
+  }
+});
+
+// API endpoint to delete all songs by a specific artist
+app.delete('/api/artists/:artistId/songs', async (req, res) => {
+  try {
+    const artistId = req.params.artistId;
+    
+    // First, get all songIds for this artist
+    const songs = await query('SELECT songId FROM song WHERE artistId = ?', [artistId]);
+    
+    if (songs.length === 0) {
+      return res.status(404).json({ error: 'No songs found for this artist' });
+    }
+    
+    const songIds = songs.map(s => s.songId);
+    
+    // Remove all favorites for these songs - use proper SQL syntax for IN clause
+    const placeholders = songIds.map(() => '?').join(',');
+    await query(`DELETE FROM userfavorites WHERE songId IN (${placeholders})`, songIds);
+    
+    // Delete all songs by this artist
+    const result = await query('DELETE FROM song WHERE artistId = ?', [artistId]);
+    
+    res.json({ 
+      success: true, 
+      message: `Deleted all songs by artist ${artistId}`, 
+      deletedCount: result.affectedRows 
     });
-  });
+  } catch (err) {
+    console.error('Error deleting artist songs:', err);
+    res.status(500).json({ error: 'Failed to delete artist songs' });
+  }
 });
 
 // Start HTTP server

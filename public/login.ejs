@@ -23,7 +23,12 @@
       <button id="spotify-login" class="btn" onclick="loginWithSpotify()">Login with Spotify</button>
     </div>
 
-    <div id="profile" style="margin-top:1.5rem;"></div>
+    <div id="profile" class="profile-section"></div>
+    
+    <div id="favorites-section" class="favorites-section">
+      <h2>Your Favorites</h2>
+      <div id="favorites-grid" class="songs-grid favorites-grid-wrapper"></div>
+    </div>
   </main>
 
   <script src="/spotify-auth.js"></script>
@@ -41,14 +46,73 @@
       .then(response => response.json())
       .then(profile => {
         const name = profile.display_name || (profile.email ? profile.email.split('@')[0] : 'User');
-        document.getElementById('profile').innerHTML = `<p>Logged in as <strong>${name}</strong></p>
-          <button onclick="logout()">Logout</button>`;
+        const profilePic = profile.images?.[0]?.url ? `<img src="${profile.images[0].url}" alt="Profile" class="profile-pic">` : '';
+        document.getElementById('profile').innerHTML = `
+          ${profilePic}
+          <p>Logged in as <strong>${name}</strong></p>
+          <button onclick="logout()" class="logout-btn">Logout</button>
+        `;
         document.getElementById('login-area').style.display = 'none';
+
+        // Load and display favorites
+        loadUserFavorites(profile.id);
       })
       .catch(() => {
         // If there's an error, clear the token and show login button
         logout();
       });
+    }
+
+    async function loadUserFavorites(spotifyId) {
+      try {
+        const resp = await fetch(`/api/favorites/${spotifyId}`);
+        if (!resp.ok) return;
+        const data = await resp.json();
+        const favorites = data.favorites || [];
+
+        if (favorites.length === 0) {
+          document.getElementById('favorites-section').classList.remove('show');
+          return;
+        }
+
+        document.getElementById('favorites-section').classList.add('show');
+        const grid = document.getElementById('favorites-grid');
+        grid.innerHTML = '';
+
+        favorites.forEach(track => {
+          const card = document.createElement('div');
+          card.className = 'card';
+          card.innerHTML = `
+            ${track.imageUrl ? `<img src="${track.imageUrl}" alt="${track.songTitle}">` : '<div class="favorite-card-placeholder">🎵</div>'}
+            <button class="favorite-btn favorited" title="Remove from favorites" onclick="removeFavorite('${spotifyId}', ${track.songId}, this); event.stopPropagation();">♥</button>
+            <div class="card-content">
+              <div class="track-name">${track.songTitle}</div>
+              <div class="artist-name">${track.artistName}</div>
+            </div>
+          `;
+          grid.appendChild(card);
+        });
+      } catch (error) {
+        console.error('Error loading favorites:', error);
+      }
+    }
+
+    async function removeFavorite(spotifyId, songId, btn) {
+      try {
+        const resp = await fetch(`/api/favorites/${spotifyId}/${songId}`, {
+          method: 'DELETE'
+        });
+        if (resp.ok) {
+          btn.parentElement.style.opacity = '0.5';
+          btn.textContent = '♡';
+          btn.classList.remove('favorited');
+          setTimeout(() => {
+            btn.parentElement.remove();
+          }, 300);
+        }
+      } catch (error) {
+        console.error('Error removing favorite:', error);
+      }
     }
   </script>
 </body>

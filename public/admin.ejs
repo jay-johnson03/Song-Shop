@@ -10,51 +10,106 @@
     <div class="admin-container">
         <a href="/" class="back-btn">← Back to Home</a>
         
-        <h1 style="color: var(--primary); margin-bottom: 10px;">Database Admin Panel</h1>
-        <p style="color: #666; margin-bottom: 40px;">View all saved tracks, artists, and genres</p>
+        <h1 class="admin-title">Database Admin Panel</h1>
+        <p class="admin-subtitle">View all saved tracks, artists, and genres</p>
 
         <div class="stats-grid" id="stats">
             <div class="stat-card">
                 <div class="stat-label">Total Songs</div>
                 <div class="stat-number" id="songCount">-</div>
             </div>
-            <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+            <div class="stat-card stat-card-artists">
                 <div class="stat-label">Total Artists</div>
                 <div class="stat-number" id="artistCount">-</div>
             </div>
-            <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+            <div class="stat-card stat-card-genres">
                 <div class="stat-label">Total Genres</div>
                 <div class="stat-number" id="genreCount">-</div>
             </div>
         </div>
 
-        <div class="section-header">
-            <h2>All Songs</h2>
-            <button class="refresh-btn" onclick="loadData()">🔄 Refresh</button>
+        <!-- Tab Navigation -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('songs')">📋 View Songs</button>
+            <button class="tab-btn" onclick="switchTab('deleteArtist')">🗑️ Delete by Artist</button>
         </div>
 
-        <div class="data-table">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Album</th>
-                        <th>Title</th>
-                        <th>Artist</th>
-                        <th>Genre</th>
-                        <th>Added</th>
-                        <th>Spotify</th>
-                    </tr>
-                </thead>
-                <tbody id="songsTable">
-                    <tr><td colspan="6" class="no-data">Loading...</td></tr>
-                </tbody>
-            </table>
+        <!-- Tab 1: View Songs -->
+        <div id="songs-tab" class="tab-content active">
+            <div class="section-header">
+                <h2>All Songs</h2>
+                <button class="refresh-btn" onclick="loadData()">🔄 Refresh</button>
+            </div>
+
+            <div class="data-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Album</th>
+                            <th>Title</th>
+                            <th>Artist</th>
+                            <th>Genre</th>
+                            <th>Added</th>
+                            <th>Spotify</th>
+                        </tr>
+                    </thead>
+                    <tbody id="songsTable">
+                        <tr><td colspan="6" class="no-data">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tab 2: Delete by Artist -->
+        <div id="deleteArtist-tab" class="tab-content">
+            <div class="section-header">
+                <h2>Delete All Songs by Artist</h2>
+            </div>
+
+            <div class="delete-artist-form">
+                <label for="artistSelect" class="form-label">Select Artist:</label>
+                <select id="artistSelect" class="form-select">
+                    <option value="">Loading artists...</option>
+                </select>
+                
+                <div id="artistInfo" class="artist-info-box">
+                    <p><strong>Songs by this artist:</strong> <span id="songCountByArtist">-</span></p>
+                    <button onclick="deleteArtistSongs()" class="delete-btn">🗑️ Delete All Songs</button>
+                </div>
+            </div>
+
+            <div id="deleteMessage" class="delete-message">
+            </div>
         </div>
     </div>
 
     <script>
         let currentOffset = 0;
-        const pageSize = 100; // Show 100 per page
+        const pageSize = 100;
+
+        // Tab switching
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remove active class from all buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName + '-tab').classList.add('active');
+            
+            // Add active class to clicked button
+            event.target.classList.add('active');
+            
+            // Load artists if switching to delete tab
+            if (tabName === 'deleteArtist') {
+                loadArtists();
+            }
+        }
 
         async function loadStats() {
             try {
@@ -75,7 +130,7 @@
                 const response = await fetch(`/api/tracks?limit=${pageSize}&offset=${currentOffset}`);
                 const data = await response.json();
 
-                loadStats(); // refresh totals separately
+                loadStats();
 
                 const tbody = document.getElementById('songsTable');
                 if (reset) tbody.innerHTML = '';
@@ -83,17 +138,16 @@
                 if (data.tracks && data.tracks.length > 0) {
                     const rowsHtml = data.tracks.map(track => `
                         <tr>
-                            <td>${track.imageUrl ? `<img src="${track.imageUrl}" alt="Album" class="album-img">` : '🎵'}</td>
+                            <td>${track.imageUrl ? `<img src="${track.imageUrl}" alt="${track.songTitle}" class="album-img">` : '🎵'}</td>
                             <td><strong>${track.songTitle}</strong></td>
                             <td>${track.artistName}</td>
                             <td><span class="genre-badge">${track.genreName}</span></td>
-                            <td class="timestamp">${new Date(track.createdAt).toLocaleString()}</td>
-                            <td>${track.previewUrl ? `<a href="${track.previewUrl}" target="_blank" class="spotify-link">🎧 Listen</a>` : '-'}</td>
+                            <td class="timestamp">-</td>
+                            <td>${track.spotifySongId ? `<a href="https://open.spotify.com/track/${track.spotifySongId}" target="_blank" class="spotify-link">🎧 Spotify</a>` : '-'}</td>
                         </tr>
                     `).join('');
                     tbody.insertAdjacentHTML('beforeend', rowsHtml);
 
-                    // Add/load more button if more remain
                     const existingLoadMore = document.getElementById('loadMoreRow');
                     if (existingLoadMore) existingLoadMore.remove();
                     const total = data.totalSongs;
@@ -101,7 +155,7 @@
                     if (currentOffset < total) {
                         tbody.insertAdjacentHTML('beforeend', `
                           <tr id="loadMoreRow">
-                            <td colspan="6" style="text-align:center; padding:25px;">
+                            <td colspan="6" class="load-more-cell">
                               <button class="refresh-btn" onclick="loadData(false)">Load More (${currentOffset}/${total})</button>
                             </td>
                           </tr>`);
@@ -111,7 +165,102 @@
                 }
             } catch (error) {
                 console.error('Error loading data:', error);
-                document.getElementById('songsTable').innerHTML = '<tr><td colspan="6" class="no-data" style="color:red;">Error loading data.</td></tr>';
+                document.getElementById('songsTable').innerHTML = '<tr><td colspan="6" class="no-data error-cell">Error loading data.</td></tr>';
+            }
+        }
+
+        async function loadArtists() {
+            try {
+                const response = await fetch('/api/tracks?limit=10000');
+                const data = await response.json();
+                
+                // Get unique artists
+                const artistMap = new Map();
+                data.tracks.forEach(track => {
+                    if (!artistMap.has(track.artistName)) {
+                        artistMap.set(track.artistName, {
+                            name: track.artistName,
+                            count: 0
+                        });
+                    }
+                    artistMap.get(track.artistName).count++;
+                });
+
+                const artists = Array.from(artistMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+                
+                const select = document.getElementById('artistSelect');
+                select.innerHTML = '<option value="">Select an artist...</option>';
+                artists.forEach(artist => {
+                    const option = document.createElement('option');
+                    option.value = artist.name;
+                    option.textContent = `${artist.name} (${artist.count} songs)`;
+                    select.appendChild(option);
+                });
+
+                select.onchange = function() {
+                    if (this.value) {
+                        const selected = artists.find(a => a.name === this.value);
+                        document.getElementById('songCountByArtist').textContent = selected.count;
+                        document.getElementById('artistInfo').classList.add('show');
+                    } else {
+                        document.getElementById('artistInfo').classList.remove('show');
+                    }
+                };
+            } catch (error) {
+                console.error('Error loading artists:', error);
+            }
+        }
+
+        async function deleteArtistSongs() {
+            const artistName = document.getElementById('artistSelect').value;
+            if (!artistName) {
+                alert('Please select an artist');
+                return;
+            }
+
+            if (!confirm(`Are you sure you want to delete all songs by "${artistName}"? This cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                // We need to get the artistId first
+                const response = await fetch('/api/tracks?limit=10000');
+                const data = await response.json();
+                const track = data.tracks.find(t => t.artistName === artistName);
+                
+                if (!track) {
+                    alert('Artist not found');
+                    return;
+                }
+
+                const deleteResponse = await fetch(`/api/artists/${track.artistId}/songs`, {
+                    method: 'DELETE'
+                });
+
+                if (!deleteResponse.ok) {
+                    throw new Error('Delete failed');
+                }
+
+                const result = await deleteResponse.json();
+                
+                const messageDiv = document.getElementById('deleteMessage');
+                messageDiv.classList.add('show', 'success');
+                messageDiv.innerHTML = `<strong>✓ Success!</strong> Deleted ${result.deletedCount} songs by "${artistName}"`;
+                
+                // Refresh stats
+                loadStats();
+                
+                // Reset form
+                document.getElementById('artistSelect').value = '';
+                document.getElementById('artistInfo').classList.remove('show');
+                
+                // Reload artists list
+                setTimeout(loadArtists, 1000);
+            } catch (error) {
+                console.error('Error deleting artist songs:', error);
+                const messageDiv = document.getElementById('deleteMessage');
+                messageDiv.classList.add('show', 'error');
+                messageDiv.innerHTML = '<strong>✗ Error!</strong> Failed to delete songs. Please try again.';
             }
         }
 

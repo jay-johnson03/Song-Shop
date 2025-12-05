@@ -83,8 +83,8 @@ async function addTrack(trackData) {
           if (rows.length > 0) {
             // Song already exists, update it
             const songId = rows[0].songId;
-            con.query('UPDATE song SET songTitle = ?, artistId = ?, genreId = ? WHERE songId = ?', 
-              [songTitle, artistId, genreId, songId], (err, result) => {
+            con.query('UPDATE song SET songTitle = ?, artistId = ?, genreId = ?, imageUrl = ? WHERE songId = ?', 
+              [songTitle, artistId, genreId, imageUrl, songId], (err, result) => {
                 con.end((endErr) => {
                   if (endErr) console.error('Error closing connection:', endErr);
                   else console.log('Connection closed gracefully.');
@@ -105,8 +105,8 @@ async function addTrack(trackData) {
               }
               const nextSongId = result[0].nextId;
               // Insert new song with explicit ID
-              con.query('INSERT INTO song (songId, songTitle, artistId, genreId, spotifySongId) VALUES (?, ?, ?, ?, ?)', 
-                [nextSongId, songTitle, artistId, genreId, spotifyId], (err, result) => {
+              con.query('INSERT INTO song (songId, songTitle, artistId, genreId, spotifySongId, imageUrl) VALUES (?, ?, ?, ?, ?, ?)', 
+                [nextSongId, songTitle, artistId, genreId, spotifyId, imageUrl], (err, result) => {
                   con.end((endErr) => {
                     if (endErr) console.error('Error closing connection:', endErr);
                     else console.log('Connection closed gracefully.');

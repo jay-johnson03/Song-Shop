@@ -80,12 +80,20 @@ async function loadSongs(genre) {
             const image = track.album.images[0]?.url || '';
             card.innerHTML = `
                 ${image ? `<img src="${image}" alt="${track.name}">` : ''}
+                <button class="favorite-btn" title="Add to favorites">♡</button>
                 <div class="card-content">
                     <div class="track-name">${track.name}</div>
                     <div class="artist-name">${track.artists[0].name}</div>
                 </div>
                 <a href="${track.external_urls.spotify}" target="_blank" rel="noopener" title="Listen on Spotify"></a>
             `;
+            
+            // Add favorite button handler
+            const favBtn = card.querySelector('.favorite-btn');
+            favBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleFavorite(track, favBtn);
+            });
             
             container.appendChild(card);
             
@@ -288,6 +296,39 @@ async function saveTrackToDatabase(track, genre) {
         } else {
             const result = await response.json();
             console.log('✓ Saved to database:', track.name);
+            
+            // Also save as favorite if user is logged in
+            const accessToken = localStorage.getItem('spotify_access_token');
+            if (accessToken) {
+                try {
+                    const userResp = await fetch('https://api.spotify.com/v1/me', {
+                        headers: { 'Authorization': `Bearer ${accessToken}` }
+                    });
+                    if (userResp.ok) {
+                        const userProfile = await userResp.json();
+                        // Get the songId from database by querying spotifyId
+                        const tracksResp = await fetch(`/api/tracks?limit=1`);
+                        if (tracksResp.ok) {
+                            const tracksData = await tracksResp.json();
+                            // Find the song we just saved
+                            const savedSong = tracksData.tracks.find(s => s.spotifySongId === track.id);
+                            if (savedSong) {
+                                await fetch('/api/favorites', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        spotifyId: userProfile.id,
+                                        songId: savedSong.songId
+                                    })
+                                });
+                                console.log('✓ Saved as favorite');
+                            }
+                        }
+                    }
+                } catch (favErr) {
+                    console.warn('Could not save favorite:', favErr);
+                }
+            }
         }
     } catch (error) {
         console.error('Database save error:', error);
@@ -326,3 +367,70 @@ async function revealAdminLinkIfAuthorized() {
 
 // Run after DOM load
 document.addEventListener('DOMContentLoaded', revealAdminLinkIfAuthorized);
+
+// Toggle favorite function
+async function toggleFavorite(track, favBtn) {
+    const accessToken = localStorage.getItem('spotify_access_token');
+    if (!accessToken) {
+        alert('Please login first to favorite songs');
+        window.location.href = '/login-page';
+        return;
+    }
+
+    try {
+        // Get user profile
+        const userResp = await fetch('https://api.spotify.com/v1/me', {
+            headers: { 'Authorization': `Bearer ${accessToken}` }
+        });
+        if (!userResp.ok) {
+            alert('Session expired. Please login again.');
+            return;
+        }
+        const userProfile = await userResp.json();
+        const spotifyId = userProfile.id;
+
+        // Get the songId from database
+        const tracksResp = await fetch('/api/tracks?limit=1000');
+        if (!tracksResp.ok) return;
+        const tracksData = await tracksResp.json();
+        const savedSong = tracksData.tracks.find(s => s.spotifySongId === track.id);
+
+        if (!savedSong) {
+            console.warn('Song not found in database yet');
+            return;
+        }
+
+        // Check if already favorited
+        const favResp = await fetch(`/api/favorites/${spotifyId}`);
+        if (!favResp.ok) return;
+        const favData = await favResp.json();
+        const isFavorited = favData.favorites.some(fav => fav.songId === savedSong.songId);
+
+        if (isFavorited) {
+            // Remove favorite
+            const deleteResp = await fetch(`/api/favorites/${spotifyId}/${savedSong.songId}`, {
+                method: 'DELETE'
+            });
+            if (deleteResp.ok) {
+                favBtn.classList.remove('favorited');
+                favBtn.textContent = '♡';
+            }
+        } else {
+            // Add favorite
+            const addResp = await fetch('/api/favorites', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    spotifyId: spotifyId,
+                    songId: savedSong.songId
+                })
+            });
+            if (addResp.ok) {
+                favBtn.classList.add('favorited');
+                favBtn.textContent = '♥';
+            }
+        }
+    } catch (error) {
+        console.error('Error toggling favorite:', error);
+    }
+}
