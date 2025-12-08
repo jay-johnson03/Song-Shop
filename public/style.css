@@ -324,6 +324,100 @@ h2
     color: white;
 }
 
+.playlist-btn {
+    position: absolute;
+    top: 10px;
+    right: 55px;
+    z-index: 5;
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    cursor: pointer;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.playlist-btn:hover {
+    background: #667eea;
+    color: white;
+    transform: scale(1.1);
+}
+
+.playlist-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.playlist-modal {
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    max-width: 400px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+    animation: slideDown 0.3s ease;
+}
+
+.playlist-modal h3 {
+    margin: 0 0 10px 0;
+    color: #333;
+    font-size: 20px;
+}
+
+.playlist-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 20px 0;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.playlist-option {
+    padding: 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    background: #f9f9f9;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    text-align: left;
+}
+
+.playlist-option:hover {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+}
+
+.close-modal-btn {
+    width: 100%;
+    padding: 10px;
+    background: #e0e0e0;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.close-modal-btn:hover {
+    background: #d0d0d0;
+}
+
 @media (max-width:480px) {
     .nav {
         flex-direction: column;
@@ -691,9 +785,56 @@ h2
     color: red;
 }
 
-/* Profile and Login Styles */
-.profile-section {
-    margin-top: 1.5rem;
+/* Profile Tabs */
+.profile-tabs {
+    display: flex !important;
+    gap: 10px;
+    margin: 20px 0;
+    border-bottom: 2px solid #234C6A;
+    padding-bottom: 15px;
+}
+
+.profile-tab-btn {
+    background: transparent;
+    color: #D2C1B6;
+    border: none;
+    padding: 12px 20px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -18px;
+}
+
+.profile-tab-btn:hover {
+    color: #fff;
+    opacity: 0.8;
+}
+
+.profile-tab-btn.active {
+    color: #fff;
+    border-bottom-color: #667eea;
+}
+
+.profile-tab-content {
+    display: none;
+    animation: fadeIn 0.3s ease-in;
+}
+
+.profile-tab-content.active {
+    display: block;
+}
+
+.profile-tab-content h2 {
+    color: #D2C1B6;
+    margin-bottom: 20px;
+}
+
+.no-items-message {
+    color: #999;
+    padding: 40px;
+    font-style: italic;
 }
 
 .favorites-section {
@@ -707,6 +848,99 @@ h2
 
 .favorites-grid-wrapper {
     margin-top: 20px;
+}
+
+/* Playlists Styles */
+.playlists-section {
+    display: none;
+    margin-top: 2rem;
+}
+
+.playlists-section.show {
+    display: block;
+}
+
+.playlist-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.playlist-header h2 {
+    margin: 0;
+}
+
+.btn-small {
+    padding: 8px 16px;
+    font-size: 14px;
+}
+
+.playlists-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.playlist-item {
+    background: #f9f9f9;
+    padding: 20px;
+    border-radius: 8px;
+    border-left: 4px solid #667eea;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.playlist-info {
+    flex: 1;
+}
+
+.playlist-info h3 {
+    margin: 0 0 8px 0;
+    color: #333;
+    font-size: 18px;
+}
+
+.playlist-desc {
+    color: #666;
+    font-size: 14px;
+    margin: 0 0 8px 0;
+}
+
+.song-count {
+    color: #999;
+    font-size: 12px;
+    margin: 0;
+}
+
+.playlist-actions {
+    display: flex;
+    gap: 10px;
+    margin-left: 20px;
+}
+
+.btn-delete {
+    background: #ff9800;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.btn-delete:hover {
+    background: #f57c00;
+    transform: translateY(-2px);
+}
+
+.no-playlists-message {
+    text-align: center;
+    color: #999;
+    padding: 40px 20px;
+    font-style: italic;
 }
 
 .profile-pic {

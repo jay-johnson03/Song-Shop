@@ -528,6 +528,175 @@ app.get('/api/admin/messages', async (req, res) => {
   }
 });
 
+// API endpoint to get song ID by Spotify track ID
+app.get('/api/songs/spotify/:spotifyTrackId', async (req, res) => {
+  try {
+    const { spotifyTrackId } = req.params;
+    const rows = await query('SELECT songId FROM song WHERE spotifySongId = ?', [spotifyTrackId]);
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Song not found' });
+    }
+    
+    res.json({ songId: rows[0].songId });
+  } catch (err) {
+    console.error('Error fetching song:', err);
+    res.status(500).json({ error: 'Failed to fetch song' });
+  }
+});
+
+// API endpoint to get user's playlists
+app.get('/api/playlists/:spotifyId', async (req, res) => {
+  try {
+    const { spotifyId } = req.params;
+    const userRows = await query('SELECT userId FROM usertable WHERE spotifyId = ?', [spotifyId]);
+    if (userRows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const playlists = await query(`
+      SELECT p.playlistId, p.playlistName, p.description, p.createdAt, COUNT(ps.songId) as songCount
+      FROM playlist p
+      LEFT JOIN playlistsongs ps ON p.playlistId = ps.playlistId
+      WHERE p.userId = ?
+      GROUP BY p.playlistId
+      ORDER BY p.createdAt DESC
+    `, [userRows[0].userId]);
+    
+    res.json({ playlists });
+  } catch (err) {
+    console.error('Error fetching playlists:', err);
+    res.status(500).json({ error: 'Failed to fetch playlists' });
+  }
+});
+
+// API endpoint to create a new playlist
+app.post('/api/playlists', async (req, res) => {
+  try {
+    const { spotifyId, playlistName, description } = req.body;
+
+    if (!spotifyId || !playlistName || playlistName.trim().length === 0) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    if (playlistName.length > 100) {
+      return res.status(400).json({ error: 'Playlist name too long (max 100 characters)' });
+    }
+
+    const userRows = await query('SELECT userId FROM usertable WHERE spotifyId = ?', [spotifyId]);
+    if (userRows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const result = await query('INSERT INTO playlist (userId, playlistName, description) VALUES (?, ?, ?)', 
+      [userRows[0].userId, playlistName, description || '']);
+    
+    res.json({ success: true, playlistId: result.insertId, message: 'Playlist created successfully' });
+  } catch (err) {
+    console.error('Error creating playlist:', err.message, err.code);
+    res.status(500).json({ error: 'Failed to create playlist', details: err.message });
+  }
+});
+
+// API endpoint to add song to playlist
+app.post('/api/playlists/:playlistId/songs', async (req, res) => {
+  try {
+    const { playlistId } = req.params;
+    const { spotifyId, songId } = req.body;
+
+    if (!spotifyId || !songId) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Verify ownership
+    const playlistRows = await query(`
+      SELECT p.userId FROM playlist p
+      JOIN usertable u ON p.userId = u.userId
+      WHERE p.playlistId = ? AND u.spotifyId = ?
+    `, [playlistId, spotifyId]);
+
+    if (playlistRows.length === 0) {
+      return res.status(403).json({ error: 'You cannot modify this playlist' });
+    }
+
+    // Check if song already in playlist
+    const existingRows = await query('SELECT * FROM playlistsongs WHERE playlistId = ? AND songId = ?', 
+      [playlistId, songId]);
+    
+    if (existingRows.length > 0) {
+      return res.status(400).json({ error: 'Song already in playlist' });
+    }
+
+    await query('INSERT INTO playlistsongs (playlistId, songId) VALUES (?, ?)', [playlistId, songId]);
+    res.json({ success: true, message: 'Song added to playlist' });
+  } catch (err) {
+    console.error('Error adding song to playlist:', err);
+    res.status(500).json({ error: 'Failed to add song to playlist' });
+  }
+});
+
+// API endpoint to delete playlist
+app.delete('/api/playlists/:playlistId', async (req, res) => {
+  try {
+    const { playlistId } = req.params;
+    const { spotifyId } = req.body;
+
+    if (!spotifyId) {
+      return res.status(400).json({ error: 'spotifyId required' });
+    }
+
+    // Verify ownership
+    const playlistRows = await query(`
+      SELECT p.playlistId FROM playlist p
+      JOIN usertable u ON p.userId = u.userId
+      WHERE p.playlistId = ? AND u.spotifyId = ?
+    `, [playlistId, spotifyId]);
+
+    if (playlistRows.length === 0) {
+      return res.status(403).json({ error: 'You cannot delete this playlist' });
+    }
+
+    // Delete songs in playlist first
+    await query('DELETE FROM playlistsongs WHERE playlistId = ?', [playlistId]);
+    // Delete playlist
+    await query('DELETE FROM playlist WHERE playlistId = ?', [playlistId]);
+    
+    res.json({ success: true, message: 'Playlist deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting playlist:', err);
+    res.status(500).json({ error: 'Failed to delete playlist' });
+  }
+});
+
+// API endpoint to remove song from playlist
+app.delete('/api/playlists/:playlistId/songs/:songId', async (req, res) => {
+  try {
+    const { playlistId, songId } = req.params;
+    const { spotifyId } = req.body;
+
+    if (!spotifyId) {
+      return res.status(400).json({ error: 'spotifyId required' });
+    }
+
+    // Verify ownership
+    const playlistRows = await query(`
+      SELECT p.playlistId FROM playlist p
+      JOIN usertable u ON p.userId = u.userId
+      WHERE p.playlistId = ? AND u.spotifyId = ?
+    `, [playlistId, spotifyId]);
+
+    if (playlistRows.length === 0) {
+      return res.status(403).json({ error: 'You cannot modify this playlist' });
+    }
+
+    await query('DELETE FROM playlistsongs WHERE playlistId = ? AND songId = ?', [playlistId, songId]);
+    res.json({ success: true, message: 'Song removed from playlist' });
+  } catch (err) {
+    console.error('Error removing song from playlist:', err);
+    res.status(500).json({ error: 'Failed to remove song from playlist' });
+  }
+});
+
 // Start HTTP server
 app.listen(PORT, 'localhost', () => {
   console.log(`\n✓ Server running at http://localhost:${PORT}`);

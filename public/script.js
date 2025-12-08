@@ -81,6 +81,7 @@ async function loadSongs(genre) {
             card.innerHTML = `
                 ${image ? `<img src="${image}" alt="${track.name}">` : ''}
                 <button class="favorite-btn" title="Add to favorites">♡</button>
+                <button class="playlist-btn" title="Add to playlist">📀</button>
                 <div class="card-content">
                     <div class="track-name">${track.name}</div>
                     <div class="artist-name">${track.artists[0].name}</div>
@@ -93,6 +94,13 @@ async function loadSongs(genre) {
             favBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 toggleFavorite(track, favBtn);
+            });
+
+            // Add playlist button handler
+            const playlistBtn = card.querySelector('.playlist-btn');
+            playlistBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showPlaylistModal(track);
             });
             
             container.appendChild(card);
@@ -432,5 +440,109 @@ async function toggleFavorite(track, favBtn) {
         }
     } catch (error) {
         console.error('Error toggling favorite:', error);
+    }
+}
+
+// Function to show playlist selection modal
+async function showPlaylistModal(track) {
+    const spotifyId = localStorage.getItem('spotify_user_id');
+    if (!spotifyId) {
+        alert('Please log in to add songs to playlists');
+        return;
+    }
+
+    try {
+        const resp = await fetch(`/api/playlists/${spotifyId}`);
+        if (!resp.ok) {
+            alert('Failed to load playlists');
+            return;
+        }
+        const data = await resp.json();
+        const playlists = data.playlists || [];
+
+        if (playlists.length === 0) {
+            alert('You don\'t have any playlists yet. Create one first!');
+            return;
+        }
+
+        // Create modal
+        const modalDiv = document.createElement('div');
+        modalDiv.className = 'playlist-modal-overlay';
+        modalDiv.onclick = closePlaylistModal;
+        
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'playlist-modal';
+        contentDiv.onclick = (e) => e.stopPropagation();
+        
+        const title = document.createElement('h3');
+        title.textContent = 'Add to Playlist';
+        contentDiv.appendChild(title);
+        
+        const desc = document.createElement('p');
+        desc.style.color = '#666';
+        desc.style.marginBottom = '15px';
+        desc.textContent = `Select a playlist to add "${track.name}":`;
+        contentDiv.appendChild(desc);
+        
+        const optionsDiv = document.createElement('div');
+        optionsDiv.className = 'playlist-options';
+        
+        playlists.forEach(p => {
+            const btn = document.createElement('button');
+            btn.className = 'playlist-option';
+            btn.textContent = p.playlistName;
+            btn.onclick = () => addSongToPlaylist(p.playlistId, track.id, spotifyId);
+            optionsDiv.appendChild(btn);
+        });
+        contentDiv.appendChild(optionsDiv);
+        
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'close-modal-btn';
+        closeBtn.textContent = 'Cancel';
+        closeBtn.onclick = closePlaylistModal;
+        contentDiv.appendChild(closeBtn);
+        
+        modalDiv.appendChild(contentDiv);
+        document.body.appendChild(modalDiv);
+    } catch (error) {
+        console.error('Error showing playlist modal:', error);
+        alert('Failed to load playlists');
+    }
+}
+
+function closePlaylistModal() {
+    const modal = document.querySelector('.playlist-modal-overlay');
+    if (modal) modal.remove();
+}
+
+async function addSongToPlaylist(playlistId, spotifyTrackId, spotifyId) {
+    try {
+        // First, get the song ID from database using spotify track ID
+        const songResp = await fetch(`/api/songs/spotify/${spotifyTrackId}`);
+        if (!songResp.ok) {
+            alert('Failed to find song in database');
+            closePlaylistModal();
+            return;
+        }
+        const songData = await songResp.json();
+        const songId = songData.songId;
+
+        // Add song to playlist
+        const resp = await fetch(`/api/playlists/${playlistId}/songs`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ spotifyId, songId })
+        });
+        
+        if (resp.ok) {
+            alert('Song added to playlist!');
+            closePlaylistModal();
+        } else {
+            const error = await resp.json();
+            alert('Error: ' + (error.error || 'Failed to add song'));
+        }
+    } catch (error) {
+        console.error('Error adding song to playlist:', error);
+        alert('Failed to add song to playlist');
     }
 }

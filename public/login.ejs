@@ -25,9 +25,25 @@
 
     <div id="profile" class="profile-section"></div>
     
-    <div id="favorites-section" class="favorites-section">
+    <!-- Tabs Navigation -->
+    <div id="profile-tabs" class="profile-tabs" style="display: none;">
+      <button class="profile-tab-btn active" onclick="switchProfileTab('favorites')">♥ Favorites</button>
+      <button class="profile-tab-btn" onclick="switchProfileTab('playlists')">📀 Playlists</button>
+    </div>
+
+    <!-- Favorites Tab -->
+    <div id="favorites-tab" class="profile-tab-content active">
       <h2>Your Favorites</h2>
       <div id="favorites-grid" class="songs-grid favorites-grid-wrapper"></div>
+    </div>
+
+    <!-- Playlists Tab -->
+    <div id="playlists-tab" class="profile-tab-content">
+      <div class="playlist-header">
+        <h2>Your Playlists</h2>
+        <button onclick="createPlaylist()" class="btn btn-small">+ Create Playlist</button>
+      </div>
+      <div id="playlists-list" class="playlists-list"></div>
     </div>
   </main>
 
@@ -57,9 +73,13 @@
           <button onclick="logout()" class="logout-btn">Logout</button>
         `;
         document.getElementById('login-area').style.display = 'none';
+        document.getElementById('profile-tabs').style.display = 'flex';
 
         // Load and display favorites
         loadUserFavorites(profile.id);
+
+        // Load and display playlists
+        loadUserPlaylists(profile.id);
       })
       .catch(() => {
         // If there's an error, clear the token and show login button
@@ -74,14 +94,13 @@
         const data = await resp.json();
         const favorites = data.favorites || [];
 
-        if (favorites.length === 0) {
-          document.getElementById('favorites-section').classList.remove('show');
-          return;
-        }
-
-        document.getElementById('favorites-section').classList.add('show');
         const grid = document.getElementById('favorites-grid');
         grid.innerHTML = '';
+
+        if (favorites.length === 0) {
+          grid.innerHTML = '<p class="no-items-message" style="grid-column: 1/-1; text-align: center; color: #999; padding: 40px;">No favorites yet. Add some songs!</p>';
+          return;
+        }
 
         favorites.forEach(track => {
           const card = document.createElement('div');
@@ -117,6 +136,117 @@
       } catch (error) {
         console.error('Error removing favorite:', error);
       }
+    }
+
+    async function loadUserPlaylists(spotifyId) {
+      try {
+        const resp = await fetch(`/api/playlists/${spotifyId}`);
+        if (!resp.ok) {
+          console.error('Failed to fetch playlists');
+          return;
+        }
+        const data = await resp.json();
+        const playlists = data.playlists || [];
+
+        const list = document.getElementById('playlists-list');
+        
+        if (playlists.length === 0) {
+          list.innerHTML = '<p class="no-items-message">No playlists yet. Create one to get started!</p>';
+          return;
+        }
+
+        list.innerHTML = '';
+
+        playlists.forEach(playlist => {
+          const item = document.createElement('div');
+          item.className = 'playlist-item';
+          item.innerHTML = `
+            <div class="playlist-info">
+              <h3>${playlist.playlistName}</h3>
+              <p class="playlist-desc">${playlist.description || 'No description'}</p>
+              <p class="song-count">📀 ${playlist.songCount} songs</p>
+            </div>
+            <div class="playlist-actions">
+              <button onclick="deletePlaylist(${playlist.playlistId}, '${spotifyId}')" class="btn-delete">🗑️ Delete</button>
+            </div>
+          `;
+          list.appendChild(item);
+        });
+      } catch (error) {
+        console.error('Error loading playlists:', error);
+      }
+    }
+
+    async function createPlaylist() {
+      const spotifyId = localStorage.getItem('spotify_user_id');
+      if (!spotifyId) {
+        alert('Please log in first');
+        return;
+      }
+
+      const playlistName = prompt('Enter playlist name:');
+      if (!playlistName || playlistName.trim().length === 0) return;
+
+      const description = prompt('Enter description (optional):');
+
+      try {
+        const resp = await fetch('/api/playlists', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ spotifyId, playlistName, description })
+        });
+        const data = await resp.json();
+        console.log('Create playlist response:', data, 'Status:', resp.status);
+        if (data.success) {
+          alert('Playlist created successfully!');
+          loadUserPlaylists(spotifyId);
+        } else {
+          alert('Error: ' + (data.details || data.error || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('Error creating playlist:', error);
+        alert('Failed to create playlist: ' + error.message);
+      }
+    }
+
+    async function deletePlaylist(playlistId, spotifyId) {
+      if (!confirm('Are you sure you want to delete this playlist?')) return;
+
+      try {
+        const resp = await fetch(`/api/playlists/${playlistId}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ spotifyId })
+        });
+        const data = await resp.json();
+        if (data.success) {
+          alert('Playlist deleted!');
+          loadUserPlaylists(spotifyId);
+        } else {
+          alert('Error: ' + data.error);
+        }
+      } catch (error) {
+        console.error('Error deleting playlist:', error);
+        alert('Failed to delete playlist');
+      }
+    }
+
+    function switchProfileTab(tabName) {
+      // Hide all tabs
+      document.querySelectorAll('.profile-tab-content').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      
+      // Remove active class from all buttons
+      document.querySelectorAll('.profile-tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      
+      // Show selected tab
+      document.getElementById(tabName + '-tab').classList.add('active');
+      
+      // Add active class to clicked button
+      event.target.classList.add('active');
     }
   </script>
 </body>
