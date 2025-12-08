@@ -385,6 +385,149 @@ app.delete('/api/artists/:artistId/songs', async (req, res) => {
   }
 });
 
+// ==================== MESSAGE BOARD ENDPOINTS ====================
+
+// API endpoint to get all messages
+app.get('/api/messages', async (req, res) => {
+  try {
+    const messages = await query(`
+      SELECT m.messageId, m.messageText, m.createdAt, m.updatedAt, u.userName, u.spotifyId, u.profilePicUrl
+      FROM messages m
+      JOIN usertable u ON m.userId = u.userId
+      WHERE u.isRestricted = 0
+      ORDER BY m.createdAt DESC
+    `);
+    res.json({ messages });
+  } catch (err) {
+    console.error('Error fetching messages:', err);
+    res.status(500).json({ error: 'Failed to fetch messages', details: err.message });
+  }
+});
+
+// API endpoint to post a message
+app.post('/api/messages', async (req, res) => {
+  try {
+    const { spotifyId, messageText } = req.body;
+    
+    if (!spotifyId || !messageText || messageText.trim().length === 0) {
+      return res.status(400).json({ error: 'Missing spotifyId or message text' });
+    }
+
+    if (messageText.length > 500) {
+      return res.status(400).json({ error: 'Message too long (max 500 characters)' });
+    }
+
+    const userRows = await query('SELECT userId, isRestricted FROM usertable WHERE spotifyId = ?', [spotifyId]);
+    if (userRows.length === 0) return res.status(404).json({ error: 'User not found' });
+    
+    const { userId, isRestricted } = userRows[0];
+    if (isRestricted) return res.status(403).json({ error: 'You have been restricted from posting messages' });
+
+    const result = await query(
+      'INSERT INTO messages (userId, messageText, createdAt, updatedAt) VALUES (?, ?, NOW(), NOW())',
+      [userId, messageText]
+    );
+
+    res.json({ success: true, message: 'Message posted successfully', messageId: result.insertId });
+  } catch (err) {
+    console.error('Error posting message:', err);
+    res.status(500).json({ error: 'Failed to post message' });
+  }
+});
+
+// API endpoint to update a message (user can only edit their own)
+app.put('/api/messages/:messageId', async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const { spotifyId, messageText } = req.body;
+
+    if (!messageText || messageText.trim().length === 0) {
+      return res.status(400).json({ error: 'Message text cannot be empty' });
+    }
+
+    if (messageText.length > 500) {
+      return res.status(400).json({ error: 'Message too long (max 500 characters)' });
+    }
+
+    const msgRows = await query('SELECT userId FROM messages WHERE messageId = ?', [messageId]);
+    if (msgRows.length === 0) return res.status(404).json({ error: 'Message not found' });
+
+    const userRows = await query('SELECT userId FROM usertable WHERE spotifyId = ?', [spotifyId]);
+    if (userRows.length === 0) return res.status(404).json({ error: 'User not found' });
+
+    if (msgRows[0].userId !== userRows[0].userId) {
+      return res.status(403).json({ error: 'You can only edit your own messages' });
+    }
+
+    await query('UPDATE messages SET messageText = ?, updatedAt = NOW() WHERE messageId = ?', [messageText, messageId]);
+    res.json({ success: true, message: 'Message updated successfully' });
+  } catch (err) {
+    console.error('Error updating message:', err);
+    res.status(500).json({ error: 'Failed to update message' });
+  }
+});
+
+// API endpoint to delete a message (user can delete own, admin can delete any)
+app.delete('/api/messages/:messageId', async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const { spotifyId } = req.body;
+
+    const msgRows = await query('SELECT userId FROM messages WHERE messageId = ?', [messageId]);
+    if (msgRows.length === 0) return res.status(404).json({ error: 'Message not found' });
+
+    const userRows = await query('SELECT userId, spotifyId FROM usertable WHERE spotifyId = ?', [spotifyId]);
+    if (userRows.length === 0) return res.status(404).json({ error: 'User not found' });
+
+    const isAdmin = userRows[0].spotifyId === process.env.ADMIN_SPOTIFY_ID;
+    const isOwner = msgRows[0].userId === userRows[0].userId;
+
+    if (!isAdmin && !isOwner) {
+      return res.status(403).json({ error: 'You cannot delete this message' });
+    }
+
+    await query('DELETE FROM messages WHERE messageId = ?', [messageId]);
+    res.json({ success: true, message: 'Message deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting message:', err);
+    res.status(500).json({ error: 'Failed to delete message' });
+  }
+});
+
+// API endpoint to restrict/unrestrict a user (admin only)
+app.put('/api/admin/users/:userId/restrict', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { adminSpotifyId, isRestricted } = req.body;
+
+    if (adminSpotifyId !== process.env.ADMIN_SPOTIFY_ID) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    await query('UPDATE usertable SET isRestricted = ? WHERE userId = ?', [isRestricted ? 1 : 0, userId]);
+    res.json({ success: true, message: `User ${isRestricted ? 'restricted' : 'unrestricted'} successfully` });
+  } catch (err) {
+    console.error('Error restricting user:', err);
+    res.status(500).json({ error: 'Failed to update user restriction' });
+  }
+});
+
+// API endpoint to get all messages (for admin panel)
+app.get('/api/admin/messages', async (req, res) => {
+  try {
+    const messages = await query(`
+      SELECT m.messageId, m.messageText, m.createdAt, m.updatedAt, u.userId, u.userName, u.spotifyId, u.isRestricted
+      FROM messages m
+      JOIN usertable u ON m.userId = u.userId
+      ORDER BY m.createdAt DESC
+    `);
+    res.json({ messages });
+  } catch (err) {
+    console.error('Error fetching messages:', err);
+    res.status(500).json({ error: 'Failed to fetch messages' });
+  }
+});
+
 // Start HTTP server
 app.listen(PORT, 'localhost', () => {
   console.log(`\n✓ Server running at http://localhost:${PORT}`);

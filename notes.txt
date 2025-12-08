@@ -1,0 +1,4 @@
+Ideas if possible: 
+
+Add a message board to the front page so users can comment on songs 
+Have admin be able to delete comments from board

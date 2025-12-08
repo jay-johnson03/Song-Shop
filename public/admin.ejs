@@ -32,6 +32,7 @@
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab('songs')">📋 View Songs</button>
             <button class="tab-btn" onclick="switchTab('deleteArtist')">🗑️ Delete by Artist</button>
+            <button class="tab-btn" onclick="switchTab('messages')">💬 Messages</button>
         </div>
 
         <!-- Tab 1: View Songs -->
@@ -81,9 +82,22 @@
             <div id="deleteMessage" class="delete-message">
             </div>
         </div>
-    </div>
+
+        <!-- Tab 3: Messages Management -->
+        <div id="messages-tab" class="tab-content">
+            <div class="section-header">
+                <h2>Community Messages</h2>
+                <button class="refresh-btn" onclick="loadMessages()">🔄 Refresh</button>
+            </div>
+
+            <div id="messages-list" class="messages-admin-list">
+                <p class="loading-text">Loading messages...</p>
+            </div>
+        </div>
 
     <script>
+        window.ADMIN_SPOTIFY_ID = "<%= process.env.ADMIN_SPOTIFY_ID || '' %>";
+        
         let currentOffset = 0;
         const pageSize = 100;
 
@@ -105,9 +119,9 @@
             // Add active class to clicked button
             event.target.classList.add('active');
             
-            // Load artists if switching to delete tab
-            if (tabName === 'deleteArtist') {
-                loadArtists();
+            // Load messages if switching to messages tab
+            if (tabName === 'messages') {
+                loadMessages();
             }
         }
 
@@ -261,6 +275,119 @@
                 const messageDiv = document.getElementById('deleteMessage');
                 messageDiv.classList.add('show', 'error');
                 messageDiv.innerHTML = '<strong>✗ Error!</strong> Failed to delete songs. Please try again.';
+            }
+        }
+
+        async function loadMessages() {
+            try {
+                const response = await fetch('/api/admin/messages');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch messages');
+                }
+                const data = await response.json();
+                const messages = data.messages || [];
+
+                const container = document.getElementById('messages-list');
+
+                if (messages.length === 0) {
+                    container.innerHTML = '<p class="no-messages">No messages found.</p>';
+                    return;
+                }
+
+                container.innerHTML = messages.map(msg => `
+                    <div class="admin-message-item">
+                        <div class="message-header-admin">
+                            <div class="message-info">
+                                <strong>${msg.userName}</strong>
+                                <span class="message-date">${new Date(msg.createdAt).toLocaleString()}</span>
+                                ${msg.isRestricted ? '<span class="restricted-badge">🚫 BLOCKED</span>' : ''}
+                            </div>
+                            <div class="message-actions-admin">
+                                ${msg.isRestricted ? 
+                                    `<button onclick="unblockUser(${msg.userId})" class="unblock-btn">🔓 Unblock User</button>` : 
+                                    `<button onclick="blockUser(${msg.userId})" class="block-btn">🚫 Block User</button>`
+                                }
+                                <button onclick="deleteMessageAdmin(${msg.messageId})" class="delete-msg-btn">🗑️ Delete</button>
+                            </div>
+                        </div>
+                        <div class="message-text-admin">${msg.messageText}</div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading messages:', error);
+                document.getElementById('messages-list').innerHTML = '<p class="error-text">Failed to load messages.</p>';
+            }
+        }
+
+        async function blockUser(userId) {
+            if (!confirm('Are you sure you want to block this user from posting messages?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/admin/users/${userId}/restrict`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ adminSpotifyId: window.ADMIN_SPOTIFY_ID, isRestricted: true })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to block user');
+                }
+
+                loadMessages();
+                alert('User blocked successfully!');
+            } catch (error) {
+                console.error('Error blocking user:', error);
+                alert('Failed to block user');
+            }
+        }
+
+        async function unblockUser(userId) {
+            if (!confirm('Are you sure you want to unblock this user?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/admin/users/${userId}/restrict`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ adminSpotifyId: window.ADMIN_SPOTIFY_ID, isRestricted: false })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to unblock user');
+                }
+
+                loadMessages();
+                alert('User unblocked successfully!');
+            } catch (error) {
+                console.error('Error unblocking user:', error);
+                alert('Failed to unblock user');
+            }
+        }
+
+        async function deleteMessageAdmin(messageId) {
+            if (!confirm('Are you sure you want to delete this message?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/messages/${messageId}`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ spotifyId: window.ADMIN_SPOTIFY_ID })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to delete message');
+                }
+
+                loadMessages();
+                alert('Message deleted successfully!');
+            } catch (error) {
+                console.error('Error deleting message:', error);
+                alert('Failed to delete message');
             }
         }
 
