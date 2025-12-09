@@ -215,8 +215,8 @@ app.get('/api/tracks', async (req, res) => {
     const totalSongs = countRows[0].totalSongs;
 
     const tracks = await query(`
-      SELECT s.songId, s.songTitle, a.artistName, g.genreName,
-             s.spotifySongId, s.imageUrl
+            SELECT s.songId, s.songTitle, s.artistId, a.artistName, g.genreName,
+              s.spotifySongId, s.imageUrl
       FROM song s
       JOIN artist a ON s.artistId = a.artistId
       JOIN genre g ON s.genreId = g.genreId
@@ -382,6 +382,59 @@ app.delete('/api/artists/:artistId/songs', async (req, res) => {
   } catch (err) {
     console.error('Error deleting artist songs:', err);
     res.status(500).json({ error: 'Failed to delete artist songs' });
+  }
+});
+
+// Admin endpoint to merge duplicate artists by name
+app.post('/api/admin/merge-duplicate-artists', async (req, res) => {
+  try {
+    const { adminSpotifyId } = req.body || {};
+    const configuredAdmin = process.env.ADMIN_SPOTIFY_ID;
+    if (configuredAdmin && adminSpotifyId !== configuredAdmin) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const duplicates = await query(`
+      SELECT artistName, MIN(artistId) AS keepId,
+             GROUP_CONCAT(artistId ORDER BY artistId) AS artistIds,
+             COUNT(*) AS cnt
+      FROM artist
+      GROUP BY artistName
+      HAVING cnt > 1
+    `);
+
+    let artistsRemoved = 0;
+    let songsRepointed = 0;
+
+    for (const row of duplicates) {
+      const keepId = Number(row.keepId);
+      const allIds = (row.artistIds || '').split(',').map(id => Number(id)).filter(Boolean);
+      const removeIds = allIds.filter(id => id !== keepId);
+
+      if (removeIds.length === 0) continue;
+
+      const placeholders = removeIds.map(() => '?').join(',');
+
+      // Repoint songs to the canonical artist
+      const updateParams = [keepId, ...removeIds];
+      const updateResult = await query(`UPDATE song SET artistId = ? WHERE artistId IN (${placeholders})`, updateParams);
+      songsRepointed += updateResult.affectedRows || 0;
+
+      // Remove duplicate artist rows
+      await query(`DELETE FROM artist WHERE artistId IN (${placeholders})`, removeIds);
+      artistsRemoved += removeIds.length;
+    }
+
+    res.json({
+      success: true,
+      message: duplicates.length === 0 ? 'No duplicate artists found' : 'Duplicate artists merged',
+      groupsProcessed: duplicates.length,
+      artistsRemoved,
+      songsRepointed
+    });
+  } catch (err) {
+    console.error('Error merging duplicate artists:', err);
+    res.status(500).json({ error: 'Failed to merge duplicate artists' });
   }
 });
 

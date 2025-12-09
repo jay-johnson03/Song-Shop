@@ -40,17 +40,30 @@ async function addTrack(trackData) {
       });
 
       function insertArtist(genreId) {
-        // 2. Check if artist exists first
-        con.query('SELECT artistId FROM artist WHERE artistName = ? AND genreId = ?', [artistName, genreId], (err, rows) => {
+        // 2. Check if artist exists by name (avoid duplicate artist rows)
+        con.query('SELECT artistId, genreId FROM artist WHERE artistName = ?', [artistName], (err, rows) => {
           if (err) {
             con.end();
             return reject(err);
           }
 
           if (rows.length > 0) {
-            // Artist already exists, use existing ID
             const artistId = rows[0].artistId;
-            insertSong(artistId, genreId);
+            const needsGenreUpdate = rows[0].genreId !== genreId;
+
+            const proceed = () => insertSong(artistId, genreId);
+
+            if (needsGenreUpdate) {
+              con.query('UPDATE artist SET genreId = ? WHERE artistId = ?', [genreId, artistId], (updateErr) => {
+                if (updateErr) {
+                  con.end();
+                  return reject(updateErr);
+                }
+                proceed();
+              });
+            } else {
+              proceed();
+            }
           } else {
             // Get next available artistId
             con.query('SELECT IFNULL(MAX(artistId), 0) + 1 AS nextId FROM artist', (err, result) => {

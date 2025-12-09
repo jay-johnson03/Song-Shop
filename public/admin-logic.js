@@ -60,7 +60,7 @@ async function loadData(reset=false) {
                     <td>${track.artistName}</td>
                     <td><span class="genre-badge">${track.genreName}</span></td>
                     <td class="timestamp">-</td>
-                    <td>${track.spotifySongId ? `<a href="https://open.spotify.com/track/${track.spotifySongId}" target="_blank" class="spotify-link">🎧 Spotify</a>` : '-'}</td>
+                    <td>${track.spotifySongId ? `<a href="https://open.spotify.com/track/${track.spotifySongId}" target="_blank" class="spotify-link">Open in Spotify</a>` : '-'}</td>
                 </tr>
             `).join('');
             tbody.insertAdjacentHTML('beforeend', rowsHtml);
@@ -87,44 +87,54 @@ async function loadData(reset=false) {
 }
 
 async function loadArtists() {
+    const select = document.getElementById('artistSelect');
+    const info = document.getElementById('artistInfo');
+    if (select) select.innerHTML = '<option value="">Loading artists...</option>';
+    if (info) info.classList.remove('show');
+
     try {
-        const response = await fetch('/api/tracks?limit=10000');
+        // Server caps at 1000, so request 1000 max
+        const response = await fetch('/api/tracks?limit=1000');
+        if (!response.ok) {
+            throw new Error(`Tracks fetch failed (${response.status})`);
+        }
         const data = await response.json();
-        
-        // Get unique artists
+        const tracks = data.tracks || [];
+
+        // Get unique artists with counts
         const artistMap = new Map();
-        data.tracks.forEach(track => {
+        tracks.forEach(track => {
             if (!artistMap.has(track.artistName)) {
-                artistMap.set(track.artistName, {
-                    name: track.artistName,
-                    count: 0
-                });
+                artistMap.set(track.artistName, { name: track.artistName, count: 0, artistId: track.artistId });
             }
             artistMap.get(track.artistName).count++;
         });
 
         const artists = Array.from(artistMap.values()).sort((a, b) => a.name.localeCompare(b.name));
-        
-        const select = document.getElementById('artistSelect');
-        select.innerHTML = '<option value="">Select an artist...</option>';
-        artists.forEach(artist => {
-            const option = document.createElement('option');
-            option.value = artist.name;
-            option.textContent = `${artist.name} (${artist.count} songs)`;
-            select.appendChild(option);
-        });
+        if (select) {
+            select.innerHTML = '<option value="">Select an artist...</option>';
+            artists.forEach(artist => {
+                const option = document.createElement('option');
+                option.value = artist.name;
+                option.textContent = `${artist.name} (${artist.count} songs)`;
+                option.dataset.artistId = artist.artistId;
+                select.appendChild(option);
+            });
 
-        select.onchange = function() {
-            if (this.value) {
-                const selected = artists.find(a => a.name === this.value);
-                document.getElementById('songCountByArtist').textContent = selected.count;
-                document.getElementById('artistInfo').classList.add('show');
-            } else {
-                document.getElementById('artistInfo').classList.remove('show');
-            }
-        };
+            select.onchange = function() {
+                if (this.value) {
+                    const selected = artists.find(a => a.name === this.value);
+                    document.getElementById('songCountByArtist').textContent = selected?.count || 0;
+                    document.getElementById('artistInfo').classList.add('show');
+                } else {
+                    document.getElementById('artistInfo').classList.remove('show');
+                }
+            };
+        }
     } catch (error) {
         console.error('Error loading artists:', error);
+        if (select) select.innerHTML = '<option value="">Failed to load artists</option>';
+        alert('Failed to load artists. Please refresh the page.');
     }
 }
 
@@ -140,10 +150,13 @@ async function deleteArtistSongs() {
     }
 
     try {
-        // We need to get the artistId first
-        const response = await fetch('/api/tracks?limit=10000');
+        // Get the artistId from a fresh track fetch (bounded to 1000)
+        const response = await fetch('/api/tracks?limit=1000');
+        if (!response.ok) {
+            throw new Error(`Tracks fetch failed (${response.status})`);
+        }
         const data = await response.json();
-        const track = data.tracks.find(t => t.artistName === artistName);
+        const track = (data.tracks || []).find(t => t.artistName === artistName);
         
         if (!track) {
             alert('Artist not found');
@@ -155,7 +168,8 @@ async function deleteArtistSongs() {
         });
 
         if (!deleteResponse.ok) {
-            throw new Error('Delete failed');
+            const errText = await deleteResponse.text();
+            throw new Error(`Delete failed: ${errText}`);
         }
 
         const result = await deleteResponse.json();
@@ -178,6 +192,49 @@ async function deleteArtistSongs() {
         const messageDiv = document.getElementById('deleteMessage');
         messageDiv.classList.add('show', 'error');
         messageDiv.innerHTML = '<strong>✗ Error!</strong> Failed to delete songs. Please try again.';
+        alert('Failed to delete songs for this artist. See console for details.');
+    }
+}
+
+async function mergeDuplicateArtists() {
+    const messageDiv = document.getElementById('dedupeMessage');
+    if (!confirm('Merge duplicate artists by name and repoint their songs to a single record?')) {
+        return;
+    }
+
+    if (messageDiv) {
+        messageDiv.className = 'delete-message show';
+        messageDiv.textContent = 'Merging duplicate artists...';
+    }
+
+    try {
+        const response = await fetch('/api/admin/merge-duplicate-artists', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ adminSpotifyId: window.ADMIN_SPOTIFY_ID })
+        });
+
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(errText || 'Failed to merge');
+        }
+
+        const result = await response.json();
+        if (messageDiv) {
+            messageDiv.className = 'delete-message show success';
+            messageDiv.innerHTML = `<strong>✓ Done.</strong> ${result.songsRepointed || 0} songs repointed; ${result.artistsRemoved || 0} duplicate artists removed.`;
+        }
+
+        loadStats();
+        loadArtists();
+        loadData(true);
+    } catch (error) {
+        console.error('Error merging duplicate artists:', error);
+        if (messageDiv) {
+            messageDiv.className = 'delete-message show error';
+            messageDiv.innerHTML = `<strong>✗ Error!</strong> Failed to merge duplicate artists. ${error.message || ''}`;
+        }
+        alert(`Failed to merge duplicate artists. ${error.message || ''}`);
     }
 }
 
@@ -203,14 +260,14 @@ async function loadMessages() {
                     <div class="message-info">
                         <strong>${msg.userName}</strong>
                         <span class="message-date">${new Date(msg.createdAt).toLocaleString()}</span>
-                        ${msg.isRestricted ? '<span class="restricted-badge">🚫 BLOCKED</span>' : ''}
+                        ${msg.isRestricted ? '<span class="restricted-badge">BLOCKED</span>' : ''}
                     </div>
                     <div class="message-actions-admin">
                         ${msg.isRestricted ? 
-                            `<button onclick="unblockUser(${msg.userId})" class="unblock-btn">🔓 Unblock User</button>` : 
-                            `<button onclick="blockUser(${msg.userId})" class="block-btn">🚫 Block User</button>`
+                            `<button onclick="unblockUser(${msg.userId})" class="unblock-btn">Unblock User</button>` : 
+                            `<button onclick="blockUser(${msg.userId})" class="block-btn">Block User</button>`
                         }
-                        <button onclick="deleteMessageAdmin(${msg.messageId})" class="delete-msg-btn">🗑️ Delete</button>
+                        <button onclick="deleteMessageAdmin(${msg.messageId})" class="delete-msg-btn">Delete</button>
                     </div>
                 </div>
                 <div class="message-text-admin">${msg.messageText}</div>
