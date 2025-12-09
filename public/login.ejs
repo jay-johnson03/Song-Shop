@@ -167,6 +167,7 @@
               <p class="song-count">📀 ${playlist.songCount} songs</p>
             </div>
             <div class="playlist-actions">
+              <button onclick="viewPlaylist(${playlist.playlistId}, '${playlist.playlistName}', '${spotifyId}')" class="btn-view">👁️ View Songs</button>
               <button onclick="deletePlaylist(${playlist.playlistId}, '${spotifyId}')" class="btn-delete">🗑️ Delete</button>
             </div>
           `;
@@ -228,6 +229,93 @@
       } catch (error) {
         console.error('Error deleting playlist:', error);
         alert('Failed to delete playlist');
+      }
+    }
+
+    async function viewPlaylist(playlistId, playlistName, spotifyId) {
+      try {
+        const resp = await fetch(`/api/playlists/${playlistId}/songs`);
+        if (!resp.ok) {
+          alert('Failed to load playlist songs');
+          return;
+        }
+        const data = await resp.json();
+        const songs = data.songs || [];
+
+        // Create modal to display songs
+        const modalDiv = document.createElement('div');
+        modalDiv.className = 'playlist-modal-overlay';
+        modalDiv.onclick = () => modalDiv.remove();
+
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'playlist-modal';
+        contentDiv.onclick = (e) => e.stopPropagation();
+
+        const title = document.createElement('h3');
+        title.textContent = playlistName;
+        contentDiv.appendChild(title);
+
+        if (songs.length === 0) {
+          const emptyMsg = document.createElement('p');
+          emptyMsg.style.color = '#666';
+          emptyMsg.textContent = 'No songs in this playlist yet.';
+          contentDiv.appendChild(emptyMsg);
+        } else {
+          const songsList = document.createElement('div');
+          songsList.className = 'playlist-songs-list';
+
+          songs.forEach(song => {
+            const songItem = document.createElement('div');
+            songItem.className = 'playlist-song-item';
+            songItem.innerHTML = `
+              <div class="song-info">
+                <strong>${song.songTitle}</strong>
+                <span>${song.artistName}</span>
+              </div>
+              <button class="btn-remove" onclick="removeSongFromPlaylist(${playlistId}, ${song.songId}, '${spotifyId}', '${playlistName}')">🗑️</button>
+            `;
+            songsList.appendChild(songItem);
+          });
+          contentDiv.appendChild(songsList);
+        }
+
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'close-modal-btn';
+        closeBtn.textContent = 'Close';
+        closeBtn.onclick = () => modalDiv.remove();
+        contentDiv.appendChild(closeBtn);
+
+        modalDiv.appendChild(contentDiv);
+        document.body.appendChild(modalDiv);
+      } catch (error) {
+        console.error('Error viewing playlist:', error);
+        alert('Failed to load playlist songs');
+      }
+    }
+
+    async function removeSongFromPlaylist(playlistId, songId, spotifyId, playlistName) {
+      if (!confirm('Remove this song from the playlist?')) return;
+
+      try {
+        const resp = await fetch(`/api/playlists/${playlistId}/songs/${songId}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ spotifyId })
+        });
+        if (resp.ok) {
+          alert('Song removed from playlist');
+          // Close and reopen the modal to refresh
+          document.querySelector('.playlist-modal-overlay').remove();
+          viewPlaylist(playlistId, playlistName, spotifyId);
+          // Also refresh the playlist list to update song count
+          loadUserPlaylists(spotifyId);
+        } else {
+          const error = await resp.json();
+          alert('Error: ' + (error.error || 'Failed to remove song'));
+        }
+      } catch (error) {
+        console.error('Error removing song:', error);
+        alert('Failed to remove song');
       }
     }
 

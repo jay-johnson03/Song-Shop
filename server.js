@@ -602,10 +602,23 @@ app.post('/api/playlists', async (req, res) => {
 app.post('/api/playlists/:playlistId/songs', async (req, res) => {
   try {
     const { playlistId } = req.params;
-    const { spotifyId, songId } = req.body;
+    console.log('Raw request body:', req.body);
+    const { spotifyId, songId, spotifyTrackId, trackData } = req.body;
 
-    if (!spotifyId || !songId) {
-      return res.status(400).json({ error: 'Missing required fields' });
+    console.log('Add to playlist - playlistId:', playlistId);
+    console.log('Add to playlist - spotifyId:', spotifyId);
+    console.log('Add to playlist - songId:', songId);
+    console.log('Add to playlist - spotifyTrackId:', spotifyTrackId);
+    console.log('Add to playlist - trackData:', trackData);
+
+    if (!spotifyId) {
+      console.log('ERROR: spotifyId is missing');
+      return res.status(400).json({ error: 'Missing spotifyId' });
+    }
+
+    if (!songId && !spotifyTrackId) {
+      console.log('ERROR: both songId and spotifyTrackId are missing');
+      return res.status(400).json({ error: 'Missing songId or spotifyTrackId' });
     }
 
     // Verify ownership
@@ -619,15 +632,51 @@ app.post('/api/playlists/:playlistId/songs', async (req, res) => {
       return res.status(403).json({ error: 'You cannot modify this playlist' });
     }
 
+    let finalSongId = songId;
+
+    // If songId not provided, try to get it from spotifyTrackId or save the track
+    if (!finalSongId && spotifyTrackId) {
+      const songRows = await query('SELECT songId FROM song WHERE spotifySongId = ?', [spotifyTrackId]);
+      
+      if (songRows.length > 0) {
+        finalSongId = songRows[0].songId;
+      } else if (trackData) {
+        // Song doesn't exist, save it first
+        try {
+          await addTrack({
+            songTitle: trackData.title,
+            artistName: trackData.artistName,
+            genreName: trackData.genre,
+            spotifyId: spotifyTrackId,
+            imageUrl: trackData.albumImage,
+            previewUrl: trackData.spotifyUrl
+          });
+          
+          // Get the newly created song ID
+          const newSongRows = await query('SELECT songId FROM song WHERE spotifySongId = ?', [spotifyTrackId]);
+          if (newSongRows.length > 0) {
+            finalSongId = newSongRows[0].songId;
+          }
+        } catch (saveErr) {
+          console.error('Error saving track:', saveErr);
+          return res.status(500).json({ error: 'Failed to save track to database' });
+        }
+      }
+    }
+
+    if (!finalSongId) {
+      return res.status(400).json({ error: 'Could not determine song ID' });
+    }
+
     // Check if song already in playlist
     const existingRows = await query('SELECT * FROM playlistsongs WHERE playlistId = ? AND songId = ?', 
-      [playlistId, songId]);
+      [playlistId, finalSongId]);
     
     if (existingRows.length > 0) {
       return res.status(400).json({ error: 'Song already in playlist' });
     }
 
-    await query('INSERT INTO playlistsongs (playlistId, songId) VALUES (?, ?)', [playlistId, songId]);
+    await query('INSERT INTO playlistsongs (playlistId, songId) VALUES (?, ?)', [playlistId, finalSongId]);
     res.json({ success: true, message: 'Song added to playlist' });
   } catch (err) {
     console.error('Error adding song to playlist:', err);
@@ -665,6 +714,27 @@ app.delete('/api/playlists/:playlistId', async (req, res) => {
   } catch (err) {
     console.error('Error deleting playlist:', err);
     res.status(500).json({ error: 'Failed to delete playlist' });
+  }
+});
+
+// API endpoint to get songs in a playlist
+app.get('/api/playlists/:playlistId/songs', async (req, res) => {
+  try {
+    const { playlistId } = req.params;
+
+    const songs = await query(`
+      SELECT s.songId, s.songTitle, a.artistName, s.spotifySongId
+      FROM playlistsongs ps
+      JOIN song s ON ps.songId = s.songId
+      JOIN artist a ON s.artistId = a.artistId
+      WHERE ps.playlistId = ?
+      ORDER BY s.songTitle
+    `, [playlistId]);
+
+    res.json({ songs });
+  } catch (err) {
+    console.error('Error fetching playlist songs:', err);
+    res.status(500).json({ error: 'Failed to fetch playlist songs' });
   }
 });
 

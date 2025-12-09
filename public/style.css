@@ -418,6 +418,81 @@ h2
     background: #d0d0d0;
 }
 
+.playlist-songs-list {
+    max-height: 400px;
+    overflow-y: auto;
+    margin: 20px 0;
+}
+
+.playlist-song-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    background: #f9f9f9;
+    transition: all 0.2s ease;
+}
+
+.playlist-song-item:hover {
+    background: #f0f0f0;
+    border-color: #667eea;
+}
+
+.playlist-song-item .song-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.playlist-song-item .song-info strong {
+    color: #333;
+    font-size: 14px;
+}
+
+.playlist-song-item .song-info span {
+    color: #666;
+    font-size: 12px;
+}
+
+.btn-remove {
+    background: #ff6b6b;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-remove:hover {
+    background: #ff5252;
+    transform: scale(1.1);
+}
+
+.btn-view {
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    margin-right: 8px;
+}
+
+.btn-view:hover {
+    background: #5568d3;
+}
+
 @media (max-width:480px) {
     .nav {
         flex-direction: column;

@@ -491,7 +491,7 @@ async function showPlaylistModal(track) {
             const btn = document.createElement('button');
             btn.className = 'playlist-option';
             btn.textContent = p.playlistName;
-            btn.onclick = () => addSongToPlaylist(p.playlistId, track.id, spotifyId);
+            btn.onclick = () => addSongToPlaylist(p.playlistId, track.id, spotifyId, track);
             optionsDiv.appendChild(btn);
         });
         contentDiv.appendChild(optionsDiv);
@@ -515,23 +515,42 @@ function closePlaylistModal() {
     if (modal) modal.remove();
 }
 
-async function addSongToPlaylist(playlistId, spotifyTrackId, spotifyId) {
+async function addSongToPlaylist(playlistId, spotifyTrackId, spotifyId, track) {
     try {
-        // First, get the song ID from database using spotify track ID
-        const songResp = await fetch(`/api/songs/spotify/${spotifyTrackId}`);
-        if (!songResp.ok) {
-            alert('Failed to find song in database');
-            closePlaylistModal();
+        console.log('addSongToPlaylist called with:', { playlistId, spotifyTrackId, spotifyId, trackName: track.name });
+        
+        if (!spotifyId) {
+            alert('User session not found. Please log in again.');
             return;
         }
-        const songData = await songResp.json();
-        const songId = songData.songId;
 
-        // Add song to playlist
+        if (!spotifyTrackId) {
+            alert('Track ID missing. Please try again.');
+            return;
+        }
+
+        // Prepare track data for the server to save if needed
+        const trackData = {
+            title: track.name,
+            artistName: track.artists?.[0]?.name || 'Unknown Artist',
+            genre: 'Pop', // Default genre
+            albumImage: track.album?.images?.[0]?.url || null,
+            spotifyUrl: track.external_urls?.spotify || null
+        };
+
+        const payload = { 
+            spotifyId, 
+            spotifyTrackId,
+            trackData
+        };
+        
+        console.log('Sending payload:', payload);
+
+        // Send to server - it will handle checking if song exists and saving if needed
         const resp = await fetch(`/api/playlists/${playlistId}/songs`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ spotifyId, songId })
+            body: JSON.stringify(payload)
         });
         
         if (resp.ok) {
@@ -539,6 +558,7 @@ async function addSongToPlaylist(playlistId, spotifyTrackId, spotifyId) {
             closePlaylistModal();
         } else {
             const error = await resp.json();
+            console.error('Server error:', error);
             alert('Error: ' + (error.error || 'Failed to add song'));
         }
     } catch (error) {
