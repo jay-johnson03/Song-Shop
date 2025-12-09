@@ -150,20 +150,17 @@ async function deleteArtistSongs() {
     }
 
     try {
-        // Get the artistId from a fresh track fetch (bounded to 1000)
-        const response = await fetch('/api/tracks?limit=1000');
-        if (!response.ok) {
-            throw new Error(`Tracks fetch failed (${response.status})`);
-        }
-        const data = await response.json();
-        const track = (data.tracks || []).find(t => t.artistName === artistName);
+        // Get the artistId from the select option's data attribute
+        const selectEl = document.getElementById('artistSelect');
+        const selectedOption = selectEl.options[selectEl.selectedIndex];
+        const artistId = selectedOption?.dataset?.artistId;
         
-        if (!track) {
-            alert('Artist not found');
+        if (!artistId) {
+            alert('Artist ID not found. Please reload and try again.');
             return;
         }
 
-        const deleteResponse = await fetch(`/api/artists/${track.artistId}/songs`, {
+        const deleteResponse = await fetch(`/api/artists/${artistId}/songs`, {
             method: 'DELETE'
         });
 

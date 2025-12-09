@@ -226,7 +226,7 @@ async function viewPlaylist(playlistId, playlistName, spotifyId) {
                         <strong>${song.songTitle}</strong>
                         <span>${song.artistName}</span>
                     </div>
-                    <button class="btn-remove" onclick="removeSongFromPlaylist(${playlistId}, ${song.songId}, '${spotifyId}', '${playlistName}')">Remove</button>
+                    <button class="btn-remove" onclick="removeSongFromPlaylist(${playlistId}, ${song.songId}, '${spotifyId}', '${playlistName}')">−</button>
                 `;
                 songsList.appendChild(songItem);
             });
