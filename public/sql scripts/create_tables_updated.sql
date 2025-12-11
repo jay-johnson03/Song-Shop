@@ -1,6 +1,5 @@
 USE SongShop;
 
--- Drop tables in reverse order of dependencies (foreign keys first)
 DROP TABLE IF EXISTS UserFavorites;
 DROP TABLE IF EXISTS PlaylistSongs;
 DROP TABLE IF EXISTS Song;

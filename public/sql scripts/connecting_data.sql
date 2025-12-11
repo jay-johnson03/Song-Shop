@@ -7,3 +7,7 @@ ORDER BY artistName;
 SELECT * FROM UserTable;
 SELECT * FROM UserFavorites
 ORDER BY userId; 
+SELECT * FROM Playlist
+ORDER BY userId; 
+SELECT * FROM playlistsongs;
+SELECT * FROM Messages;
